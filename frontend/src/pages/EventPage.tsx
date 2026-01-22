@@ -284,17 +284,27 @@ function EventPage() {
                 />
                 📁 Mehrere Dateien wählen
               </label>
-              <label className="file-button">
-                <input
-                  type="file"
-                  ref={cameraInputRef}
-                  accept="image/*,video/*"
-                  capture="environment"
-                  onChange={handleFileSelect}
-                  style={{ display: 'none' }}
-                />
-                📷 Kamera öffnen
-              </label>
+                    <label className="file-button">
+                      <input
+                        type="file"
+                        ref={cameraInputRef}
+                        accept="image/*,video/*"
+                        capture="environment"
+                        onChange={handleFileSelect}
+                        style={{ display: 'none' }}
+                      />
+                      📷 Kamera öffnen
+                    </label>
+                    <label className="file-button">
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        capture="user"
+                        onChange={handleFileSelect}
+                        style={{ display: 'none' }}
+                      />
+                      📹 Front-Kamera
+                    </label>
             </div>
             {selectedFiles.length > 0 && (
               <div className="selected-files">
@@ -410,28 +420,28 @@ function EventPage() {
                     ) : (
                       <div className="gallery-file">{upload.original_filename}</div>
                     )}
-                    <div className="gallery-info">
-                      <span className="guest-name">{upload.guest_name}</span>
-                      <div className="gallery-item-actions">
-                        {canDownload && (
-                          <a
-                            href={upload.file_path}
-                            download={upload.original_filename}
-                            className="download-link"
-                          >
-                            ⬇ Herunterladen
-                          </a>
-                        )}
-                        {isHost && (
-                          <button
-                            onClick={() => handleDeleteUpload(upload.id)}
-                            className="delete-upload-button"
-                          >
-                            🗑️ Löschen
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                           <div className="gallery-info">
+                             <span className="guest-name">{upload.guest_name}</span>
+                             <div className="gallery-item-actions" onClick={(e) => e.stopPropagation()}>
+                               {canDownload && (
+                                 <a
+                                   href={upload.file_path}
+                                   download={upload.original_filename}
+                                   className="download-link"
+                                 >
+                                   ⬇ Herunterladen
+                                 </a>
+                               )}
+                               {isHost && (
+                                 <button
+                                   onClick={() => handleDeleteUpload(upload.id)}
+                                   className="delete-upload-button"
+                                 >
+                                   🗑️ Löschen
+                                 </button>
+                               )}
+                             </div>
+                           </div>
                   </div>
                 ))}
               </div>
