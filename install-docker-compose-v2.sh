@@ -47,8 +47,23 @@ case $ARCH in
         ;;
 esac
 
-# Neueste Version herunterladen
-COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4)
+# Prüfen ob curl oder wget verfügbar ist
+if command -v curl &> /dev/null; then
+    DOWNLOAD_CMD="curl -SL"
+    # Neueste Version herunterladen
+    COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4)
+elif command -v wget &> /dev/null; then
+    DOWNLOAD_CMD="wget -O"
+    # Neueste Version herunterladen
+    COMPOSE_VERSION=$(wget -qO- https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4)
+else
+    echo "❌ Weder curl noch wget ist installiert!"
+    echo "Bitte installieren Sie eines der beiden:"
+    echo "  apt-get install curl"
+    echo "  oder"
+    echo "  apt-get install wget"
+    exit 1
+fi
 
 if [ -z "$COMPOSE_VERSION" ]; then
     COMPOSE_VERSION="v2.24.5"  # Fallback-Version
@@ -60,7 +75,11 @@ echo "Lade Docker Compose $COMPOSE_VERSION für $COMPOSE_ARCH herunter..."
 DOWNLOAD_URL="https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${COMPOSE_ARCH}"
 
 # Herunterladen
-curl -SL "$DOWNLOAD_URL" -o ~/.docker/cli-plugins/docker-compose
+if [ "$DOWNLOAD_CMD" = "wget -O" ]; then
+    wget -O ~/.docker/cli-plugins/docker-compose "$DOWNLOAD_URL"
+else
+    curl -SL "$DOWNLOAD_URL" -o ~/.docker/cli-plugins/docker-compose
+fi
 
 # Ausführbar machen
 chmod +x ~/.docker/cli-plugins/docker-compose
@@ -76,7 +95,15 @@ else
     echo ""
     echo "❌ Installation fehlgeschlagen"
     echo "Versuchen Sie es manuell:"
-    echo "  curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${COMPOSE_ARCH} -o ~/.docker/cli-plugins/docker-compose"
-    echo "  chmod +x ~/.docker/cli-plugins/docker-compose"
+    if command -v wget &> /dev/null; then
+        echo "  mkdir -p ~/.docker/cli-plugins/"
+        echo "  wget -O ~/.docker/cli-plugins/docker-compose https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${COMPOSE_ARCH}"
+        echo "  chmod +x ~/.docker/cli-plugins/docker-compose"
+    else
+        echo "  apt-get install wget"
+        echo "  mkdir -p ~/.docker/cli-plugins/"
+        echo "  wget -O ~/.docker/cli-plugins/docker-compose https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${COMPOSE_ARCH}"
+        echo "  chmod +x ~/.docker/cli-plugins/docker-compose"
+    fi
     exit 1
 fi
