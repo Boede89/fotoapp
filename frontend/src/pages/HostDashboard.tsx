@@ -48,7 +48,7 @@ function HostDashboard() {
     setLoading(true);
     try {
       await api.post('/events', newEvent);
-      setNewEvent({ name: '', description: '', allow_view: true, allow_download: false });
+      setNewEvent({ name: '', description: '', allow_view: true, allow_download: false, event_date: '', expires_in_days: 14 });
       setShowAddEvent(false);
       loadEvents();
     } catch (error: any) {
