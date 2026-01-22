@@ -63,10 +63,49 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
 
     const eventId = result.lastInsertRowid;
 
-    // QR-Code generieren - URL aus Request-Header oder Environment-Variable
-    const frontendUrl = process.env.FRONTEND_URL || 
-      (req.headers.origin || req.headers.referer || 'http://localhost:3000').replace(/\/$/, '');
+    // QR-Code generieren - URL aus Environment-Variable oder Request-Header
+    let frontendUrl = process.env.FRONTEND_URL;
+    
+    // Wenn FRONTEND_URL nicht gesetzt ist oder localhost, versuche aus Request-Header zu extrahieren
+    if (!frontendUrl || frontendUrl === 'http://localhost:3000' || frontendUrl.includes('localhost')) {
+      const origin = req.headers.origin || req.headers.referer;
+      if (origin) {
+        try {
+          // Wenn origin bereits eine vollständige URL ist
+          if (origin.startsWith('http://') || origin.startsWith('https://')) {
+            const url = new URL(origin);
+            frontendUrl = `${url.protocol}//${url.host}`;
+          } else {
+            // Wenn nur Host-Header vorhanden ist, verwende das Protokoll aus dem Request
+            const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+            frontendUrl = `${protocol}://${origin}`;
+          }
+        } catch (e) {
+          console.warn('Konnte Frontend-URL nicht aus Request-Header extrahieren:', e);
+          // Fallback: Verwende Host-Header mit Standard-Protokoll
+          const host = req.headers.host || 'localhost:3000';
+          const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+          frontendUrl = `${protocol}://${host}`;
+        }
+      } else {
+        // Letzter Fallback
+        const host = req.headers.host || 'localhost:3000';
+        const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+        frontendUrl = `${protocol}://${host}`;
+      }
+    }
+    
+    // Trailing slash entfernen
+    frontendUrl = frontendUrl.replace(/\/$/, '');
     const qrUrl = `${frontendUrl}/event/${eventCode}`;
+    
+    console.log('QR-Code wird generiert:');
+    console.log('  FRONTEND_URL aus env:', process.env.FRONTEND_URL);
+    console.log('  Request origin:', req.headers.origin);
+    console.log('  Request referer:', req.headers.referer);
+    console.log('  Request host:', req.headers.host);
+    console.log('  Verwendete Frontend-URL:', frontendUrl);
+    console.log('  QR-Code URL:', qrUrl);
     const qrCodeDataUrl = await QRCode.toDataURL(qrUrl, {
       width: 400,
       margin: 2,
