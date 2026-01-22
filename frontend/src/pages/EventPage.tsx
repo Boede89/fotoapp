@@ -202,7 +202,7 @@ function EventPage() {
     if (!event || !confirm('Möchten Sie dieses Bild wirklich löschen?')) return;
     try {
       await api.delete(`/events/${event.id}/uploads/${uploadId}`);
-      loadUploads();
+      loadUploads(event.id);
     } catch (error: any) {
       alert(error.response?.data?.error || 'Fehler beim Löschen');
     }
@@ -217,7 +217,7 @@ function EventPage() {
         await api.delete(`/events/${event.id}/uploads/${uploadId}`);
       }
       setSelectedUploads([]);
-      loadUploads();
+      loadUploads(event.id);
     } catch (error: any) {
       alert(error.response?.data?.error || 'Fehler beim Löschen');
     }
