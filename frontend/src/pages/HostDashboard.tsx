@@ -162,7 +162,6 @@ function HostDashboard() {
   const handlePrintQRCode = (event: Event) => {
     const printWindow = window.open('', '_blank');
     if (printWindow && event.qr_code) {
-      const eventUrl = getEventUrl(event.event_code);
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
