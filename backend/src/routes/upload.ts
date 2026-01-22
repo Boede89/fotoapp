@@ -10,6 +10,7 @@ const router = express.Router();
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
+  files?: Express.Multer.File[];
 }
 
 interface MulterAuthRequest extends AuthRequest {
@@ -64,13 +65,14 @@ const upload = multer({
   }
 });
 
-// Datei hochladen
-router.post('/', upload.single('file'), async (req: MulterRequest, res: Response, next: NextFunction) => {
+// Mehrere Dateien hochladen
+router.post('/', upload.array('files', 50), async (req: MulterRequest, res: Response, next: NextFunction) => {
   try {
     const { event_code, guest_name } = req.body;
+    const files = req.files || (req.file ? [req.file] : []);
 
-    if (!event_code || !guest_name || !req.file) {
-      return res.status(400).json({ error: 'Event-Code, Gästename und Datei sind erforderlich' });
+    if (!event_code || !guest_name || files.length === 0) {
+      return res.status(400).json({ error: 'Event-Code, Gästename und mindestens eine Datei sind erforderlich' });
     }
 
     // Event prüfen
@@ -79,43 +81,57 @@ router.post('/', upload.single('file'), async (req: MulterRequest, res: Response
       return res.status(404).json({ error: 'Event nicht gefunden' });
     }
 
-    const filePath = req.file.path;
-    const relativePath = `/uploads/events/${event.id}/${req.file.filename}`;
-
-    // In Datenbank speichern
-    const result = db.prepare(`
-      INSERT INTO uploads (event_id, guest_name, filename, original_filename, file_path, file_type, file_size)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      event.id,
-      guest_name,
-      req.file.filename,
-      req.file.originalname,
-      relativePath,
-      req.file.mimetype,
-      req.file.size
-    );
-
-    // Zu Synology NAS synchronisieren (falls konfiguriert)
-    if (process.env.SYNOLOGY_ENABLED === 'true') {
-      try {
-        await syncToSynology(event.id, event.name, filePath, req.file.originalname);
-      } catch (synoError) {
-        console.error('Synology-Sync-Fehler:', synoError);
-        // Fehler wird geloggt, aber Upload wird trotzdem als erfolgreich markiert
+    // Prüfen ob Event abgelaufen ist
+    if (event.expires_at) {
+      const expiresAt = new Date(event.expires_at);
+      if (new Date() > expiresAt) {
+        return res.status(403).json({ error: 'Dieses Event ist abgelaufen' });
       }
     }
 
-    res.status(201).json({
-      id: result.lastInsertRowid,
-      message: 'Datei erfolgreich hochgeladen',
-      file: {
-        id: result.lastInsertRowid,
-        filename: req.file.originalname,
-        path: relativePath,
-        size: req.file.size,
-        type: req.file.mimetype
+    const uploadedFiles: any[] = [];
+
+    // Alle Dateien verarbeiten
+    for (const file of files) {
+      const filePath = file.path;
+      const relativePath = `/uploads/events/${event.id}/${file.filename}`;
+
+      // In Datenbank speichern
+      const result = db.prepare(`
+        INSERT INTO uploads (event_id, guest_name, filename, original_filename, file_path, file_type, file_size)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        event.id,
+        guest_name,
+        file.filename,
+        file.originalname,
+        relativePath,
+        file.mimetype,
+        file.size
+      );
+
+      // Zu Synology NAS synchronisieren (falls konfiguriert)
+      if (process.env.SYNOLOGY_ENABLED === 'true') {
+        try {
+          await syncToSynology(event.id, event.name, filePath, file.originalname);
+        } catch (synoError) {
+          console.error('Synology-Sync-Fehler:', synoError);
+          // Fehler wird geloggt, aber Upload wird trotzdem als erfolgreich markiert
+        }
       }
+
+      uploadedFiles.push({
+        id: result.lastInsertRowid,
+        filename: file.originalname,
+        path: relativePath,
+        size: file.size,
+        type: file.mimetype
+      });
+    }
+
+    res.status(201).json({
+      message: `${uploadedFiles.length} Datei(en) erfolgreich hochgeladen`,
+      files: uploadedFiles
     });
   } catch (error) {
     next(error);

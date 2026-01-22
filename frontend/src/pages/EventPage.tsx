@@ -28,7 +28,7 @@ function EventPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [guestName, setGuestName] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,15 +65,16 @@ function EventPage() {
   }, [event]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      setSelectedFiles(filesArray);
       setError('');
     }
   };
 
   const handleUpload = async () => {
-    if (!guestName.trim() || !selectedFile || !code) {
-      setError('Bitte geben Sie Ihren Namen ein und wählen Sie eine Datei aus');
+    if (!guestName.trim() || selectedFiles.length === 0 || !code) {
+      setError('Bitte geben Sie Ihren Namen ein und wählen Sie mindestens eine Datei aus');
       return;
     }
 
@@ -82,7 +83,10 @@ function EventPage() {
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      // Alle Dateien hinzufügen
+      selectedFiles.forEach((file) => {
+        formData.append('files', file);
+      });
       formData.append('event_code', code);
       formData.append('guest_name', guestName);
 
@@ -93,11 +97,11 @@ function EventPage() {
       });
 
       setGuestName('');
-      setSelectedFile(null);
+      setSelectedFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
       loadUploads();
-      alert('Datei erfolgreich hochgeladen!');
+      alert(`${selectedFiles.length} Datei(en) erfolgreich hochgeladen!`);
     } catch (error: any) {
       setError(error.response?.data?.error || 'Fehler beim Hochladen');
     } finally {
@@ -121,9 +125,15 @@ function EventPage() {
       <div className="event-header">
         {event.cover_image && (
           <img
-            src={`http://localhost:3001${event.cover_image}`}
+            src={`/api${event.cover_image}`}
             alt={event.name}
             className="event-cover-large"
+            onError={(e) => {
+              // Fallback auf direkten Pfad
+              (e.target as HTMLImageElement).src = event.cover_image.startsWith('http') 
+                ? event.cover_image 
+                : `${window.location.origin}${event.cover_image}`;
+            }}
           />
         )}
         <div className="event-title">
@@ -149,10 +159,11 @@ function EventPage() {
                   type="file"
                   ref={fileInputRef}
                   accept="image/*,video/*"
+                  multiple
                   onChange={handleFileSelect}
                   style={{ display: 'none' }}
                 />
-                📁 Aus Dateien wählen
+                📁 Mehrere Dateien wählen
               </label>
               <label className="file-button">
                 <input
@@ -166,18 +177,25 @@ function EventPage() {
                 📷 Kamera öffnen
               </label>
             </div>
-            {selectedFile && (
-              <div className="selected-file">
-                Ausgewählt: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+            {selectedFiles.length > 0 && (
+              <div className="selected-files">
+                <strong>{selectedFiles.length} Datei(en) ausgewählt:</strong>
+                <ul>
+                  {selectedFiles.map((file, index) => (
+                    <li key={index}>
+                      {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
             {error && <div className="error-message">{error}</div>}
             <button
               onClick={handleUpload}
-              disabled={uploading || !selectedFile || !guestName.trim()}
+              disabled={uploading || selectedFiles.length === 0 || !guestName.trim()}
               className="upload-button"
             >
-              {uploading ? 'Wird hochgeladen...' : 'Hochladen'}
+              {uploading ? `Wird hochgeladen... (${selectedFiles.length} Datei(en))` : `${selectedFiles.length > 0 ? selectedFiles.length + ' ' : ''}Datei(en) hochladen`}
             </button>
           </div>
         </div>
@@ -193,13 +211,19 @@ function EventPage() {
                   <div key={upload.id} className="gallery-item">
                     {isImage(upload.file_type) ? (
                       <img
-                        src={`http://localhost:3001${upload.file_path}`}
+                        src={`/api${upload.file_path}`}
                         alt={upload.original_filename}
                         className="gallery-image"
+                        onError={(e) => {
+                          // Fallback auf direkten Pfad
+                          (e.target as HTMLImageElement).src = upload.file_path.startsWith('http') 
+                            ? upload.file_path 
+                            : `${window.location.origin}${upload.file_path}`;
+                        }}
                       />
                     ) : isVideo(upload.file_type) ? (
                       <video
-                        src={`http://localhost:3001${upload.file_path}`}
+                        src={`/api${upload.file_path}`}
                         controls
                         className="gallery-video"
                       />

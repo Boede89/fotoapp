@@ -15,7 +15,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
       return res.status(403).json({ error: 'Nur Gastgeber können Events erstellen' });
     }
 
-    const { name, description, allow_view = true, allow_download = false } = req.body;
+    const { name, description, allow_view = true, allow_download = false, event_date, expires_in_days = 14 } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Event-Name ist erforderlich' });
@@ -24,10 +24,30 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
     const eventCode = uuidv4().substring(0, 8).toUpperCase();
     const hostId = req.user!.id;
 
+    // Ablaufzeit berechnen (Standard: 14 Tage nach Event-Datum oder heute)
+    let expiresAt: Date | null = null;
+    if (event_date) {
+      const eventDate = new Date(event_date);
+      expiresAt = new Date(eventDate);
+      expiresAt.setDate(expiresAt.getDate() + (expires_in_days || 14));
+    } else {
+      expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + (expires_in_days || 14));
+    }
+
     const result = db.prepare(`
-      INSERT INTO events (name, description, event_code, host_id, allow_view, allow_download)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(name, description || null, eventCode, hostId, allow_view ? 1 : 0, allow_download ? 1 : 0);
+      INSERT INTO events (name, description, event_code, host_id, allow_view, allow_download, event_date, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      name,
+      description || null,
+      eventCode,
+      hostId,
+      allow_view ? 1 : 0,
+      allow_download ? 1 : 0,
+      event_date || null,
+      expiresAt.toISOString()
+    );
 
     const eventId = result.lastInsertRowid;
 

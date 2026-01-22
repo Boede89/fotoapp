@@ -24,7 +24,9 @@ function HostDashboard() {
     name: '',
     description: '',
     allow_view: true,
-    allow_download: false
+    allow_download: false,
+    event_date: '',
+    expires_in_days: 14
   });
   const [loading, setLoading] = useState(false);
 
@@ -119,6 +121,24 @@ function HostDashboard() {
                   onChange={(e) => setNewEvent({ ...newEvent, allow_download: e.target.checked })}
                 />
                 Gäste können Bilder herunterladen
+              </label>
+              <label>
+                Event-Datum:
+                <input
+                  type="date"
+                  value={newEvent.event_date}
+                  onChange={(e) => setNewEvent({ ...newEvent, event_date: e.target.value })}
+                />
+              </label>
+              <label>
+                Gültigkeitsdauer (Tage, Standard: 14):
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={newEvent.expires_in_days}
+                  onChange={(e) => setNewEvent({ ...newEvent, expires_in_days: parseInt(e.target.value) || 14 })}
+                />
               </label>
               <button type="submit" disabled={loading}>
                 {loading ? 'Wird erstellt...' : 'Event erstellen'}

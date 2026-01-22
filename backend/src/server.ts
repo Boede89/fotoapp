@@ -8,6 +8,7 @@ import eventRoutes from './routes/events';
 import uploadRoutes from './routes/upload';
 import adminRoutes from './routes/admin';
 import { errorHandler } from './middleware/errorHandler';
+import { cleanupExpiredEvents } from './services/cleanup';
 
 dotenv.config();
 
@@ -49,6 +50,15 @@ initDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`Server läuft auf Port ${PORT}`);
   });
+
+  // Cleanup-Job: Alle 6 Stunden abgelaufene Events löschen
+  setInterval(async () => {
+    console.log('Starte Cleanup-Job für abgelaufene Events...');
+    await cleanupExpiredEvents();
+  }, 6 * 60 * 60 * 1000); // 6 Stunden
+
+  // Cleanup einmal beim Start ausführen
+  cleanupExpiredEvents();
 }).catch((error) => {
   console.error('Fehler beim Initialisieren der Datenbank:', error);
   process.exit(1);

@@ -102,12 +102,23 @@
   background: #e8e8f5;
 }
 
-.selected-file {
+.selected-file,
+.selected-files {
   padding: 12px;
   background: #e8f5e9;
   border-radius: 8px;
   color: #2e7d32;
   font-weight: 500;
+}
+
+.selected-files ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
+.selected-files li {
+  margin: 4px 0;
 }
 
 .error-message {

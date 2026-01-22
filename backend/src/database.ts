@@ -33,10 +33,24 @@ export function initDatabase(): Promise<void> {
           host_id INTEGER NOT NULL,
           allow_view BOOLEAN DEFAULT 1,
           allow_download BOOLEAN DEFAULT 0,
+          event_date DATE,
+          expires_at DATETIME,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (host_id) REFERENCES users(id)
         )
       `);
+
+      // Spalten hinzufügen falls sie nicht existieren (für bestehende Datenbanken)
+      try {
+        db.exec(`ALTER TABLE events ADD COLUMN event_date DATE`);
+      } catch (e: any) {
+        // Spalte existiert bereits, ignorieren
+      }
+      try {
+        db.exec(`ALTER TABLE events ADD COLUMN expires_at DATETIME`);
+      } catch (e: any) {
+        // Spalte existiert bereits, ignorieren
+      }
 
       // Uploads-Tabelle
       db.exec(`
