@@ -187,21 +187,22 @@ function HostDashboard() {
               .qr-container {
                 background: white;
                 border-radius: 24px;
-                padding: 50px 40px;
+                padding: 30px 25px;
                 box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
                 text-align: center;
                 max-width: 600px;
                 width: 100%;
+                page-break-inside: avoid;
               }
               .party-header {
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                gap: 15px;
-                margin-bottom: 30px;
+                gap: 10px;
+                margin-bottom: 15px;
               }
               .party-icon {
-                font-size: 48px;
+                font-size: 36px;
                 animation: bounce 2s infinite;
               }
               @keyframes bounce {
@@ -209,29 +210,33 @@ function HostDashboard() {
                 50% { transform: translateY(-10px); }
               }
               .event-title {
-                font-size: 32px;
+                font-size: clamp(20px, 4vw, 28px);
                 font-weight: 700;
                 color: #667eea;
-                margin-bottom: 20px;
+                margin-bottom: 15px;
                 line-height: 1.2;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                hyphens: auto;
+                max-width: 100%;
               }
               .qr-description {
-                font-size: 18px;
+                font-size: 16px;
                 color: #555;
-                margin-bottom: 30px;
-                line-height: 1.6;
+                margin-bottom: 20px;
+                line-height: 1.4;
                 font-weight: 400;
               }
               .qr-code-wrapper {
                 background: white;
-                padding: 20px;
+                padding: 15px;
                 border-radius: 16px;
                 display: inline-block;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                margin-bottom: 30px;
+                margin-bottom: 20px;
               }
               .qr-code-wrapper img {
-                max-width: 350px;
+                max-width: 280px;
                 width: 100%;
                 height: auto;
                 display: block;
@@ -239,51 +244,105 @@ function HostDashboard() {
               .qr-instructions {
                 background: #f8f9fa;
                 border-radius: 12px;
-                padding: 20px;
-                margin-top: 20px;
+                padding: 15px;
+                margin-top: 15px;
               }
               .qr-instructions h3 {
-                font-size: 20px;
+                font-size: 16px;
                 color: #333;
-                margin-bottom: 12px;
+                margin-bottom: 8px;
                 font-weight: 600;
               }
               .qr-instructions ol {
                 text-align: left;
                 display: inline-block;
                 color: #666;
-                font-size: 16px;
-                line-height: 2;
+                font-size: 13px;
+                line-height: 1.6;
+                margin: 0;
+                padding-left: 20px;
               }
               .qr-instructions li {
-                margin-bottom: 8px;
+                margin-bottom: 4px;
               }
               .event-code {
-                margin-top: 20px;
-                padding: 12px 20px;
+                margin-top: 15px;
+                padding: 10px 15px;
                 background: #667eea;
                 color: white;
                 border-radius: 8px;
-                font-size: 14px;
+                font-size: 12px;
                 font-weight: 600;
                 display: inline-block;
               }
               .footer {
-                margin-top: 30px;
-                font-size: 12px;
+                margin-top: 15px;
+                font-size: 11px;
                 color: #999;
               }
               @media print {
+                @page {
+                  size: A4;
+                  margin: 15mm;
+                }
                 body {
                   background: white;
                   padding: 0;
+                  margin: 0;
                 }
                 .qr-container {
                   box-shadow: none;
-                  padding: 30px;
+                  padding: 20px 15px;
+                  border-radius: 12px;
+                  max-width: 100%;
+                  page-break-inside: avoid;
+                  break-inside: avoid;
                 }
                 .party-icon {
                   animation: none;
+                  font-size: 32px;
+                }
+                .party-header {
+                  margin-bottom: 10px;
+                }
+                .event-title {
+                  font-size: 22px;
+                  margin-bottom: 10px;
+                }
+                .qr-description {
+                  font-size: 14px;
+                  margin-bottom: 15px;
+                }
+                .qr-code-wrapper {
+                  padding: 12px;
+                  margin-bottom: 15px;
+                }
+                .qr-code-wrapper img {
+                  max-width: 250px;
+                }
+                .qr-instructions {
+                  padding: 12px;
+                  margin-top: 12px;
+                }
+                .qr-instructions h3 {
+                  font-size: 14px;
+                  margin-bottom: 6px;
+                }
+                .qr-instructions ol {
+                  font-size: 12px;
+                  line-height: 1.5;
+                }
+                .qr-instructions li {
+                  margin-bottom: 3px;
+                }
+                .event-code {
+                  margin-top: 12px;
+                  padding: 8px 12px;
+                  font-size: 11px;
+                }
+                .footer {
+                  margin-top: 12px;
+                  font-size: 10px;
                 }
               }
             </style>
