@@ -10,7 +10,7 @@ const router = express.Router();
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
-  files?: Express.Multer.File[];
+  files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
 }
 
 interface MulterAuthRequest extends AuthRequest {
@@ -66,10 +66,22 @@ const upload = multer({
 });
 
 // Mehrere Dateien hochladen
-router.post('/', upload.array('files', 50), async (req: MulterRequest, res: Response, next: NextFunction) => {
+router.post('/', upload.array('files', 50), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { event_code, guest_name } = req.body;
-    const files = req.files || (req.file ? [req.file] : []);
+    
+    // Dateien aus Request extrahieren
+    let files: Express.Multer.File[] = [];
+    if (req.files) {
+      if (Array.isArray(req.files)) {
+        files = req.files;
+      } else if (typeof req.files === 'object') {
+        // Wenn files ein Objekt ist, alle Arrays zusammenführen
+        files = Object.values(req.files).flat();
+      }
+    } else if ((req as any).file) {
+      files = [(req as any).file];
+    }
 
     if (!event_code || !guest_name || files.length === 0) {
       return res.status(400).json({ error: 'Event-Code, Gästename und mindestens eine Datei sind erforderlich' });
