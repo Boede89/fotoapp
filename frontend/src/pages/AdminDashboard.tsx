@@ -30,6 +30,9 @@ function AdminDashboard() {
     expires_in_days: 14
   });
   const [loading, setLoading] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const toastIdRef = useRef(0);
 
   useEffect(() => {
     loadHosts();
@@ -46,11 +49,11 @@ function AdminDashboard() {
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = ++toastIdRef.current;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev: Toast[]) => [...prev, { id, message, type }]);
   };
 
   const removeToast = (id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((prev: Toast[]) => prev.filter((t: Toast) => t.id !== id));
   };
 
   const showConfirm = (message: string, onConfirm: () => void) => {
