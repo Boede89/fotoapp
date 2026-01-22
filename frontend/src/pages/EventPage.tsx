@@ -358,82 +358,106 @@ function EventPage() {
               <p className="no-uploads">Noch keine Dateien hochgeladen</p>
             ) : (
               <div className="gallery">
-                {uploads.map((upload) => (
-                  <div key={upload.id} className={`gallery-item ${selectedUploads.includes(upload.id) ? 'selected' : ''}`}>
-                    {isHost && (
-                      <input
-                        type="checkbox"
-                        checked={selectedUploads.includes(upload.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedUploads([...selectedUploads, upload.id]);
-                          } else {
-                            setSelectedUploads(selectedUploads.filter(id => id !== upload.id));
-                          }
-                        }}
-                        className="upload-checkbox"
-                      />
-                    )}
-                    {canDownload && !isHost && (
-                      <input
-                        type="checkbox"
-                        checked={selectedUploads.includes(upload.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedUploads([...selectedUploads, upload.id]);
-                          } else {
-                            setSelectedUploads(selectedUploads.filter(id => id !== upload.id));
-                          }
-                        }}
-                        className="upload-checkbox"
-                      />
-                    )}
-                    {isImage(upload.file_type) ? (
-                      <img
-                        src={upload.file_path}
-                        alt={upload.original_filename}
-                        className="gallery-image"
-                        onError={(e) => {
-                          // Fallback auf absoluten Pfad
-                          const img = e.target as HTMLImageElement;
-                          if (!img.src.startsWith('http')) {
-                            img.src = `${window.location.origin}${upload.file_path}`;
-                          }
-                        }}
-                      />
-                    ) : isVideo(upload.file_type) ? (
-                      <video
-                        src={upload.file_path}
-                        controls
-                        className="gallery-video"
-                      />
-                    ) : (
-                      <div className="gallery-file">{upload.original_filename}</div>
-                    )}
-                           <div className="gallery-info">
-                             <span className="guest-name">{upload.guest_name}</span>
-                             <div className="gallery-item-actions" onClick={(e) => e.stopPropagation()}>
-                               {canDownload && (
-                                 <a
-                                   href={upload.file_path}
-                                   download={upload.original_filename}
-                                   className="download-link"
-                                 >
-                                   ⬇ Herunterladen
-                                 </a>
-                               )}
-                               {isHost && (
-                                 <button
-                                   onClick={() => handleDeleteUpload(upload.id)}
-                                   className="delete-upload-button"
-                                 >
-                                   🗑️ Löschen
-                                 </button>
-                               )}
-                             </div>
-                           </div>
-                  </div>
-                ))}
+                {uploads.map((upload) => {
+                  const isSelected = selectedUploads.includes(upload.id);
+                  const canSelect = isHost || (canDownload && !isHost);
+                  
+                  return (
+                    <div 
+                      key={upload.id} 
+                      className={`gallery-item ${isSelected ? 'selected' : ''}`}
+                      onClick={(e) => {
+                        // Nur wenn Auswahl erlaubt ist
+                        if (!canSelect) return;
+                        
+                        // Verhindere Auslösung wenn auf Checkbox, Button oder Link geklickt wird
+                        const target = e.target as HTMLElement;
+                        if (
+                          target.tagName === 'INPUT' || 
+                          target.tagName === 'BUTTON' || 
+                          target.tagName === 'A' || 
+                          target.closest('button') || 
+                          target.closest('a') ||
+                          target.closest('.gallery-item-actions') ||
+                          target.closest('.gallery-info')
+                        ) {
+                          return;
+                        }
+                        
+                        // Toggle Auswahl
+                        e.stopPropagation();
+                        if (isSelected) {
+                          setSelectedUploads(selectedUploads.filter(id => id !== upload.id));
+                        } else {
+                          setSelectedUploads([...selectedUploads, upload.id]);
+                        }
+                      }}
+                      style={{ cursor: canSelect ? 'pointer' : 'default' }}
+                    >
+                      {canSelect && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            if (e.target.checked) {
+                              setSelectedUploads([...selectedUploads, upload.id]);
+                            } else {
+                              setSelectedUploads(selectedUploads.filter(id => id !== upload.id));
+                            }
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="upload-checkbox"
+                        />
+                      )}
+                      {isImage(upload.file_type) ? (
+                        <img
+                          src={upload.file_path}
+                          alt={upload.original_filename}
+                          className="gallery-image"
+                          onError={(e) => {
+                            // Fallback auf absoluten Pfad
+                            const img = e.target as HTMLImageElement;
+                            if (!img.src.startsWith('http')) {
+                              img.src = `${window.location.origin}${upload.file_path}`;
+                            }
+                          }}
+                        />
+                      ) : isVideo(upload.file_type) ? (
+                        <video
+                          src={upload.file_path}
+                          controls
+                          className="gallery-video"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <div className="gallery-file">{upload.original_filename}</div>
+                      )}
+                      <div className="gallery-info" onClick={(e) => e.stopPropagation()}>
+                        <span className="guest-name">{upload.guest_name}</span>
+                        <div className="gallery-item-actions">
+                          {canDownload && (
+                            <a
+                              href={upload.file_path}
+                              download={upload.original_filename}
+                              className="download-link"
+                            >
+                              ⬇ Herunterladen
+                            </a>
+                          )}
+                          {isHost && (
+                            <button
+                              onClick={() => handleDeleteUpload(upload.id)}
+                              className="delete-upload-button"
+                            >
+                              🗑️ Löschen
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
