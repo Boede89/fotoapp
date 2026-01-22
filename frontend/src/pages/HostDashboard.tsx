@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import EventEditModal from './EventEditModal';
 import './Dashboard.css';
 
 interface Event {
