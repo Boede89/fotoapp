@@ -17,7 +17,6 @@
     "multer": "^1.4.5-lts.1",
     "qrcode": "^1.5.3",
     "better-sqlite3": "^9.2.2",
-    "smb2": "^0.8.3",
     "uuid": "^9.0.1",
     "express-rate-limit": "^7.1.5"
   },

@@ -20,12 +20,13 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
-# System-Abhängigkeiten für better-sqlite3 und smb2
+# System-Abhängigkeiten für better-sqlite3 und CIFS/SMB
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
-    cifs-utils
+    cifs-utils \
+    util-linux
 
 # Backend-Dependencies installieren
 COPY backend/package*.json ./

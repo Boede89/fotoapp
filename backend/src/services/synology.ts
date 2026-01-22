@@ -1,6 +1,9 @@
-import SMB2 from 'smb2';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs';
+
+const execAsync = promisify(exec);
 
 interface SynologyConfig {
   host: string;
@@ -8,38 +11,67 @@ interface SynologyConfig {
   password: string;
   share: string;
   basePath?: string;
+  mountPoint?: string;
 }
 
-let smb2Client: SMB2 | null = null;
+let isMounted = false;
+let mountPoint: string | null = null;
 
-function getSynologyClient(): SMB2 | null {
+function getSynologyConfig(): SynologyConfig | null {
   if (process.env.SYNOLOGY_ENABLED !== 'true') {
     return null;
   }
 
-  if (!smb2Client) {
-    const config: SynologyConfig = {
-      host: process.env.SYNOLOGY_HOST || '',
-      username: process.env.SYNOLOGY_USERNAME || '',
-      password: process.env.SYNOLOGY_PASSWORD || '',
-      share: process.env.SYNOLOGY_SHARE || 'fotoapp',
-      basePath: process.env.SYNOLOGY_BASE_PATH || '/fotoapp'
-    };
+  const config: SynologyConfig = {
+    host: process.env.SYNOLOGY_HOST || '',
+    username: process.env.SYNOLOGY_USERNAME || '',
+    password: process.env.SYNOLOGY_PASSWORD || '',
+    share: process.env.SYNOLOGY_SHARE || 'fotoapp',
+    basePath: process.env.SYNOLOGY_BASE_PATH || '/fotoapp',
+    mountPoint: process.env.SYNOLOGY_MOUNT_POINT || '/mnt/synology'
+  };
 
-    if (!config.host || !config.username || !config.password) {
-      console.warn('Synology-Konfiguration unvollständig');
-      return null;
-    }
-
-    smb2Client = new SMB2({
-      share: `\\\\${config.host}\\${config.share}`,
-      domain: process.env.SYNOLOGY_DOMAIN || '',
-      username: config.username,
-      password: config.password
-    });
+  if (!config.host || !config.username || !config.password) {
+    console.warn('Synology-Konfiguration unvollständig');
+    return null;
   }
 
-  return smb2Client;
+  return config;
+}
+
+async function mountSynologyShare(config: SynologyConfig): Promise<boolean> {
+  if (isMounted && mountPoint) {
+    return true;
+  }
+
+  try {
+    // Mount-Point erstellen
+    if (!fs.existsSync(config.mountPoint!)) {
+      fs.mkdirSync(config.mountPoint!, { recursive: true });
+    }
+
+    // SMB-Share mounten
+    const mountCmd = `mount -t cifs //${config.host}/${config.share} ${config.mountPoint} -o username=${config.username},password=${config.password},uid=1000,gid=1000,iocharset=utf8`;
+    
+    try {
+      await execAsync(mountCmd);
+      isMounted = true;
+      mountPoint = config.mountPoint!;
+      console.log(`Synology-Share erfolgreich gemountet: ${config.mountPoint}`);
+      return true;
+    } catch (error: any) {
+      // Falls bereits gemountet, ist das OK
+      if (error.message.includes('already mounted') || error.message.includes('Device or resource busy')) {
+        isMounted = true;
+        mountPoint = config.mountPoint!;
+        return true;
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('Fehler beim Mounten der Synology-Share:', error);
+    return false;
+  }
 }
 
 export async function syncToSynology(
@@ -48,38 +80,35 @@ export async function syncToSynology(
   localFilePath: string,
   originalFilename: string
 ): Promise<void> {
-  const client = getSynologyClient();
-  if (!client) {
+  const config = getSynologyConfig();
+  if (!config) {
     return;
   }
 
-  return new Promise((resolve, reject) => {
-    const basePath = process.env.SYNOLOGY_BASE_PATH || '/fotoapp';
-    const eventFolder = `${basePath}/${eventName}_${eventId}`;
-    const remotePath = `${eventFolder}/${originalFilename}`;
+  try {
+    // Share mounten (falls nicht bereits gemountet)
+    const mounted = await mountSynologyShare(config);
+    if (!mounted) {
+      console.warn('Synology-Share konnte nicht gemountet werden. Überspringe Synchronisation.');
+      return;
+    }
+
+    const basePath = config.basePath || '/fotoapp';
+    const eventFolder = path.join(config.mountPoint!, basePath, `${eventName}_${eventId}`);
+    const remotePath = path.join(eventFolder, originalFilename);
 
     // Ordner erstellen (falls nicht vorhanden)
-    client.mkdir(eventFolder, (err) => {
-      if (err && err.code !== 'EEXIST') {
-        console.error('Fehler beim Erstellen des Ordners:', err);
-        // Weiter versuchen, Datei hochzuladen
-      }
+    if (!fs.existsSync(eventFolder)) {
+      fs.mkdirSync(eventFolder, { recursive: true });
+    }
 
-      // Datei lesen
-      const fileContent = fs.readFileSync(localFilePath);
-
-      // Datei hochladen
-      client.writeFile(remotePath, fileContent, (err) => {
-        if (err) {
-          console.error('Fehler beim Hochladen zur Synology:', err);
-          reject(err);
-        } else {
-          console.log(`Datei erfolgreich zu Synology synchronisiert: ${remotePath}`);
-          resolve();
-        }
-      });
-    });
-  });
+    // Datei kopieren
+    fs.copyFileSync(localFilePath, remotePath);
+    console.log(`Datei erfolgreich zu Synology synchronisiert: ${remotePath}`);
+  } catch (error) {
+    console.error('Fehler beim Synchronisieren zur Synology:', error);
+    // Fehler wird geloggt, aber Upload wird trotzdem als erfolgreich markiert
+  }
 }
 
 // Alternative: WebDAV-Implementierung (falls SMB nicht funktioniert)
@@ -90,6 +119,6 @@ export async function syncToSynologyWebDAV(
   originalFilename: string
 ): Promise<void> {
   // Diese Funktion kann später implementiert werden, wenn WebDAV bevorzugt wird
-  // Für jetzt verwenden wir SMB2
+  // Für jetzt verwenden wir SMB/CIFS mount
   return syncToSynology(eventId, eventName, localFilePath, originalFilename);
 }
