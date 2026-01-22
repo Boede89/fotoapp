@@ -7,6 +7,10 @@ interface Host {
   id: number;
   username: string;
   email: string;
+  max_events: number | null;
+  event_date: string | null;
+  expires_in_days: number;
+  event_count?: number;
   created_at: string;
 }
 
@@ -14,7 +18,14 @@ function AdminDashboard() {
   const { user, logout } = useAuth();
   const [hosts, setHosts] = useState<Host[]>([]);
   const [showAddHost, setShowAddHost] = useState(false);
-  const [newHost, setNewHost] = useState({ username: '', email: '', password: '' });
+  const [newHost, setNewHost] = useState({
+    username: '',
+    email: '',
+    password: '',
+    max_events: '',
+    event_date: '',
+    expires_in_days: 14
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -34,8 +45,11 @@ function AdminDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/admin/hosts', newHost);
-      setNewHost({ username: '', email: '', password: '' });
+      await api.post('/admin/hosts', {
+        ...newHost,
+        max_events: newHost.max_events ? parseInt(newHost.max_events) : null
+      });
+      setNewHost({ username: '', email: '', password: '', max_events: '', event_date: '', expires_in_days: 14 });
       setShowAddHost(false);
       loadHosts();
     } catch (error: any) {
@@ -97,6 +111,34 @@ function AdminDashboard() {
                 onChange={(e) => setNewHost({ ...newHost, password: e.target.value })}
                 required
               />
+              <label>
+                Maximale Anzahl Events (leer = unbegrenzt):
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Unbegrenzt"
+                  value={newHost.max_events}
+                  onChange={(e) => setNewHost({ ...newHost, max_events: e.target.value })}
+                />
+              </label>
+              <label>
+                Event-Datum (wenn gesetzt, gilt für alle Events dieses Gastgebers):
+                <input
+                  type="date"
+                  value={newHost.event_date}
+                  onChange={(e) => setNewHost({ ...newHost, event_date: e.target.value })}
+                />
+              </label>
+              <label>
+                Gültigkeitsdauer in Tagen (Standard: 14):
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={newHost.expires_in_days}
+                  onChange={(e) => setNewHost({ ...newHost, expires_in_days: parseInt(e.target.value) || 14 })}
+                />
+              </label>
               <button type="submit" disabled={loading}>
                 {loading ? 'Wird erstellt...' : 'Erstellen'}
               </button>
@@ -109,6 +151,16 @@ function AdminDashboard() {
                 <div>
                   <h3>{host.username}</h3>
                   <p>{host.email}</p>
+                  <div className="host-info">
+                    <span>Max. Events: {host.max_events || 'Unbegrenzt'}</span>
+                    {host.event_count !== undefined && (
+                      <span>Aktuell: {host.event_count} / {host.max_events || '∞'}</span>
+                    )}
+                    {host.event_date && (
+                      <span>Event-Datum: {new Date(host.event_date).toLocaleDateString('de-DE')}</span>
+                    )}
+                    <span>Gültigkeitsdauer: {host.expires_in_days} Tage</span>
+                  </div>
                 </div>
                 <button
                   onClick={() => handleDeleteHost(host.id)}

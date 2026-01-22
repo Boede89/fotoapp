@@ -20,13 +20,12 @@ function HostDashboard() {
   const { user, logout } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [newEvent, setNewEvent] = useState({
     name: '',
     description: '',
     allow_view: true,
-    allow_download: false,
-    event_date: '',
-    expires_in_days: 14
+    allow_download: false
   });
   const [loading, setLoading] = useState(false);
 
@@ -48,7 +47,7 @@ function HostDashboard() {
     setLoading(true);
     try {
       await api.post('/events', newEvent);
-      setNewEvent({ name: '', description: '', allow_view: true, allow_download: false, event_date: '', expires_in_days: 14 });
+      setNewEvent({ name: '', description: '', allow_view: true, allow_download: false });
       setShowAddEvent(false);
       loadEvents();
     } catch (error: any) {
@@ -123,24 +122,6 @@ function HostDashboard() {
                 />
                 Gäste können Bilder herunterladen
               </label>
-              <label>
-                Event-Datum:
-                <input
-                  type="date"
-                  value={newEvent.event_date}
-                  onChange={(e) => setNewEvent({ ...newEvent, event_date: e.target.value })}
-                />
-              </label>
-              <label>
-                Gültigkeitsdauer (Tage, Standard: 14):
-                <input
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={newEvent.expires_in_days}
-                  onChange={(e) => setNewEvent({ ...newEvent, expires_in_days: parseInt(e.target.value) || 14 })}
-                />
-              </label>
               <button type="submit" disabled={loading}>
                 {loading ? 'Wird erstellt...' : 'Event erstellen'}
               </button>
@@ -182,6 +163,12 @@ function HostDashboard() {
                     />
                   </div>
                   <div className="event-actions">
+                    <button
+                      onClick={() => setEditingEvent(event)}
+                      className="edit-button"
+                    >
+                      Bearbeiten
+                    </button>
                     <a
                       href={`/event/${event.event_code}`}
                       target="_blank"
@@ -203,6 +190,13 @@ function HostDashboard() {
           </div>
         </div>
       </div>
+      {editingEvent && (
+        <EventEditModal
+          event={editingEvent}
+          onClose={() => setEditingEvent(null)}
+          onUpdate={loadEvents}
+        />
+      )}
     </div>
   );
 }

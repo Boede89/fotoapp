@@ -17,9 +17,29 @@ export function initDatabase(): Promise<void> {
           email TEXT UNIQUE NOT NULL,
           password TEXT NOT NULL,
           role TEXT NOT NULL DEFAULT 'guest',
+          max_events INTEGER DEFAULT NULL,
+          event_date DATE DEFAULT NULL,
+          expires_in_days INTEGER DEFAULT 14,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
+
+      // Spalten hinzufügen falls sie nicht existieren (für bestehende Datenbanken)
+      try {
+        db.exec(`ALTER TABLE users ADD COLUMN max_events INTEGER DEFAULT NULL`);
+      } catch (e: any) {
+        // Spalte existiert bereits, ignorieren
+      }
+      try {
+        db.exec(`ALTER TABLE users ADD COLUMN event_date DATE DEFAULT NULL`);
+      } catch (e: any) {
+        // Spalte existiert bereits, ignorieren
+      }
+      try {
+        db.exec(`ALTER TABLE users ADD COLUMN expires_in_days INTEGER DEFAULT 14`);
+      } catch (e: any) {
+        // Spalte existiert bereits, ignorieren
+      }
 
       // Events-Tabelle
       db.exec(`
