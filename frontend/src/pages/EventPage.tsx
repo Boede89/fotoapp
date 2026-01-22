@@ -282,29 +282,19 @@ function EventPage() {
                   onChange={handleFileSelect}
                   style={{ display: 'none' }}
                 />
-                📁 Mehrere Dateien wählen
+                📁 Dateien aus Album wählen
               </label>
-                    <label className="file-button">
-                      <input
-                        type="file"
-                        ref={cameraInputRef}
-                        accept="image/*,video/*"
-                        capture="environment"
-                        onChange={handleFileSelect}
-                        style={{ display: 'none' }}
-                      />
-                      📷 Kamera öffnen
-                    </label>
-                    <label className="file-button">
-                      <input
-                        type="file"
-                        accept="image/*,video/*"
-                        capture="user"
-                        onChange={handleFileSelect}
-                        style={{ display: 'none' }}
-                      />
-                      📹 Front-Kamera
-                    </label>
+              <label className="file-button">
+                <input
+                  type="file"
+                  ref={cameraInputRef}
+                  accept="image/*,video/*"
+                  capture
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                />
+                📷 Kamera öffnen
+              </label>
             </div>
             {selectedFiles.length > 0 && (
               <div className="selected-files">
