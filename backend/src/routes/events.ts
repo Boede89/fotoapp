@@ -166,8 +166,61 @@ router.delete('/:id', authenticateToken, (req: AuthRequest, res, next) => {
       return res.status(403).json({ error: 'Keine Berechtigung' });
     }
 
+    // Alle Uploads des Events finden und Dateien löschen
+    const uploads = db.prepare('SELECT file_path FROM uploads WHERE event_id = ?').all(eventId) as any[];
+    const fs = require('fs');
+    const path = require('path');
+    
+    const getUploadsDir = () => {
+      if (typeof __dirname !== 'undefined') {
+        return path.join(__dirname, '../../uploads/events');
+      }
+      return path.join(process.cwd(), 'uploads/events');
+    };
+    
+    const uploadsDir = getUploadsDir();
+    
+    // Dateien löschen
+    for (const upload of uploads) {
+      try {
+        const filePath = path.join(uploadsDir, '..', upload.file_path.replace('/uploads/', ''));
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (error) {
+        console.error(`Fehler beim Löschen der Datei ${upload.file_path}:`, error);
+      }
+    }
+
+    // Event-Ordner löschen
+    try {
+      const eventDir = path.join(uploadsDir, eventId.toString());
+      if (fs.existsSync(eventDir)) {
+        fs.rmSync(eventDir, { recursive: true, force: true });
+      }
+    } catch (error) {
+      console.error('Fehler beim Löschen des Event-Ordners:', error);
+    }
+
+    // QR-Code löschen (falls vorhanden)
+    if (event.qr_code) {
+      try {
+        const qrPath = path.join(uploadsDir, '..', 'qrcodes', path.basename(event.qr_code));
+        if (fs.existsSync(qrPath)) {
+          fs.unlinkSync(qrPath);
+        }
+      } catch (error) {
+        // Ignorieren
+      }
+    }
+
+    // Uploads aus Datenbank löschen
+    db.prepare('DELETE FROM uploads WHERE event_id = ?').run(eventId);
+    
+    // Event aus Datenbank löschen
     db.prepare('DELETE FROM events WHERE id = ?').run(eventId);
-    res.json({ message: 'Event gelöscht' });
+    
+    res.json({ message: 'Event und alle zugehörigen Dateien wurden gelöscht' });
   } catch (error) {
     next(error);
   }

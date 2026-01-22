@@ -59,12 +59,13 @@ function HostDashboard() {
   };
 
   const handleDeleteEvent = async (id: number) => {
-    if (!confirm('Möchten Sie dieses Event wirklich löschen?')) return;
+    if (!confirm('Möchten Sie dieses Event wirklich löschen? Alle zugehörigen Dateien werden ebenfalls gelöscht.')) return;
     try {
       await api.delete(`/events/${id}`);
       loadEvents();
-    } catch (error) {
-      alert('Fehler beim Löschen');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Fehler beim Löschen');
+      console.error('Fehler beim Löschen:', error);
     }
   };
 

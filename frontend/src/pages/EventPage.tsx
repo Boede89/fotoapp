@@ -125,14 +125,15 @@ function EventPage() {
       <div className="event-header">
         {event.cover_image && (
           <img
-            src={`/api${event.cover_image}`}
+            src={event.cover_image}
             alt={event.name}
             className="event-cover-large"
             onError={(e) => {
-              // Fallback auf direkten Pfad
-              (e.target as HTMLImageElement).src = event.cover_image.startsWith('http') 
-                ? event.cover_image 
-                : `${window.location.origin}${event.cover_image}`;
+              // Fallback auf absoluten Pfad
+              const img = e.target as HTMLImageElement;
+              if (!img.src.startsWith('http')) {
+                img.src = `${window.location.origin}${event.cover_image}`;
+              }
             }}
           />
         )}
@@ -211,19 +212,20 @@ function EventPage() {
                   <div key={upload.id} className="gallery-item">
                     {isImage(upload.file_type) ? (
                       <img
-                        src={`/api${upload.file_path}`}
+                        src={upload.file_path}
                         alt={upload.original_filename}
                         className="gallery-image"
                         onError={(e) => {
-                          // Fallback auf direkten Pfad
-                          (e.target as HTMLImageElement).src = upload.file_path.startsWith('http') 
-                            ? upload.file_path 
-                            : `${window.location.origin}${upload.file_path}`;
+                          // Fallback auf absoluten Pfad
+                          const img = e.target as HTMLImageElement;
+                          if (!img.src.startsWith('http')) {
+                            img.src = `${window.location.origin}${upload.file_path}`;
+                          }
                         }}
                       />
                     ) : isVideo(upload.file_type) ? (
                       <video
-                        src={`/api${upload.file_path}`}
+                        src={upload.file_path}
                         controls
                         className="gallery-video"
                       />
@@ -234,8 +236,8 @@ function EventPage() {
                       <span className="guest-name">{upload.guest_name}</span>
                       {event.allow_download && (
                         <a
-                          href={`http://localhost:3001${upload.file_path}`}
-                          download
+                          href={upload.file_path}
+                          download={upload.original_filename}
                           className="download-link"
                         >
                           ⬇ Herunterladen

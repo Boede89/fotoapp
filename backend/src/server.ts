@@ -20,8 +20,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Statische Dateien für Uploads
-app.use('/uploads', express.static('uploads'));
+// Statische Dateien für Uploads (muss vor Frontend-Routing kommen)
+const getUploadsPath = () => {
+  if (typeof __dirname !== 'undefined') {
+    return path.join(__dirname, '../uploads');
+  }
+  return path.join(process.cwd(), 'uploads');
+};
+app.use('/uploads', express.static(getUploadsPath()));
 
 // Routes
 app.use('/api/auth', authRoutes);
