@@ -26,7 +26,6 @@ interface Upload {
 
 function EventPage() {
   const { code } = useParams<{ code: string }>();
-  const { user } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [canView, setCanView] = useState(true);
@@ -133,7 +132,7 @@ function EventPage() {
     if (!event || !confirm('Möchten Sie dieses Bild wirklich löschen?')) return;
     try {
       await api.delete(`/events/${event.id}/uploads/${uploadId}`);
-      loadUploads(event.id);
+      loadUploads();
     } catch (error: any) {
       alert(error.response?.data?.error || 'Fehler beim Löschen');
     }
@@ -148,76 +147,7 @@ function EventPage() {
         await api.delete(`/events/${event.id}/uploads/${uploadId}`);
       }
       setSelectedUploads([]);
-      loadUploads(event.id);
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Löschen');
-    }
-  };
-
-  const handleBulkDownload = async () => {
-    if (!event || selectedUploads.length === 0) return;
-    
-    try {
-      const response = await api.post(`/events/${event.id}/uploads/download`, {
-        uploadIds: selectedUploads
-      });
-      
-      // Alle ausgewählten Dateien herunterladen
-      response.data.files.forEach((file: any) => {
-        const link = document.createElement('a');
-        link.href = file.path;
-        link.download = file.filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      });
-      
-      setSelectedUploads([]);
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Download');
-    }
-  };
-
-  const handleDownloadAll = async () => {
-    if (!event || uploads.length === 0) return;
-    
-    try {
-      const response = await api.post(`/events/${event.id}/uploads/download`, {});
-      
-      // Alle Dateien herunterladen
-      response.data.files.forEach((file: any) => {
-        const link = document.createElement('a');
-        link.href = file.path;
-        link.download = file.filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      });
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Download');
-    }
-  };
-
-  const handleDeleteUpload = async (uploadId: number) => {
-    if (!event || !confirm('Möchten Sie dieses Bild wirklich löschen?')) return;
-    try {
-      await api.delete(`/events/${event.id}/uploads/${uploadId}`);
-      loadUploads(event.id);
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Löschen');
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (!event || selectedUploads.length === 0) return;
-    if (!confirm(`Möchten Sie ${selectedUploads.length} Bild(er) wirklich löschen?`)) return;
-    
-    try {
-      for (const uploadId of selectedUploads) {
-        await api.delete(`/events/${event.id}/uploads/${uploadId}`);
-      }
-      setSelectedUploads([]);
-      loadUploads(event.id);
+      loadUploads();
     } catch (error: any) {
       alert(error.response?.data?.error || 'Fehler beim Löschen');
     }
