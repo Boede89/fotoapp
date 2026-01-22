@@ -283,7 +283,7 @@ function HostDashboard() {
               @media print {
                 @page {
                   size: A4;
-                  margin: 8mm;
+                  margin: 12mm;
                 }
                 body {
                   background: white;
@@ -292,7 +292,7 @@ function HostDashboard() {
                 }
                 .qr-container {
                   box-shadow: none;
-                  padding: 12px 8px;
+                  padding: 20px 15px;
                   border-radius: 8px;
                   max-width: 100%;
                   page-break-inside: avoid;
@@ -300,55 +300,56 @@ function HostDashboard() {
                 }
                 .party-icon {
                   animation: none;
-                  font-size: 20px;
+                  font-size: 28px;
                 }
                 .party-header {
-                  margin-bottom: 6px;
-                  gap: 6px;
+                  margin-bottom: 12px;
+                  gap: 10px;
                 }
                 .event-title {
-                  font-size: clamp(12px, 2.5vw, 16px);
-                  margin-bottom: 6px;
-                  line-height: 1.1;
+                  font-size: clamp(16px, 3.5vw, 22px);
+                  margin-bottom: 10px;
+                  line-height: 1.15;
                   word-wrap: break-word;
                   overflow-wrap: break-word;
                   hyphens: auto;
                 }
                 .qr-description {
-                  font-size: 11px;
-                  margin-bottom: 8px;
-                  line-height: 1.2;
+                  font-size: 14px;
+                  margin-bottom: 12px;
+                  line-height: 1.3;
                 }
                 .qr-code-wrapper {
-                  padding: 8px;
-                  margin-bottom: 8px;
+                  padding: 12px;
+                  margin-bottom: 12px;
                 }
                 .qr-code-wrapper img {
                   max-width: 180px;
                 }
                 .qr-instructions {
-                  padding: 8px;
-                  margin-top: 8px;
+                  padding: 12px;
+                  margin-top: 12px;
                 }
                 .qr-instructions h3 {
-                  font-size: 11px;
-                  margin-bottom: 4px;
+                  font-size: 13px;
+                  margin-bottom: 6px;
                 }
                 .qr-instructions ol {
-                  font-size: 9px;
-                  line-height: 1.3;
-                  padding-left: 16px;
+                  font-size: 11px;
+                  line-height: 1.4;
+                  padding-left: 20px;
                 }
                 .qr-instructions li {
-                  margin-bottom: 1px;
+                  margin-bottom: 3px;
                 }
                 .event-code {
-                  margin-top: 8px;
-                  padding: 5px 8px;
-                  font-size: 9px;
+                  margin-top: 12px;
+                  padding: 8px 12px;
+                  font-size: 11px;
                 }
                 .footer {
-                  display: none;
+                  margin-top: 12px;
+                  font-size: 10px;
                 }
               }
             </style>
