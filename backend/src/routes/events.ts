@@ -47,10 +47,10 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
 
     db.prepare('UPDATE events SET qr_code = ? WHERE id = ?').run(`/uploads/qrcodes/qr-${eventCode}.png`, eventId);
 
-    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId) as any;
 
     res.status(201).json({
-      ...event,
+      ...(event || {}),
       qr_code_data: qrCodeDataUrl
     });
   } catch (error) {
