@@ -100,10 +100,19 @@ function HostDashboard() {
   };
 
   const handleShowAddEvent = () => {
-    if (!canCreateEvent()) {
-      showToast(`Sie haben bereits die maximale Anzahl von ${userProfile?.max_events} Event(s) erreicht.`, 'error');
+    if (!userProfile) {
+      setShowAddEvent(true);
       return;
     }
+    
+    if (userProfile.max_events !== null) {
+      const currentCount = userProfile.event_count || 0;
+      if (currentCount >= userProfile.max_events) {
+        showToast(`Sie haben bereits die maximale Anzahl von ${userProfile.max_events} Event(s) erreicht.`, 'error');
+        return;
+      }
+    }
+    
     setShowAddEvent(true);
   };
 
