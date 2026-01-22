@@ -178,6 +178,85 @@ router.get('/code/:code', (req, res, next) => {
   }
 });
 
+// QR-Code neu generieren (falls URL falsch war)
+router.post('/:id/regenerate-qr', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const eventId = parseInt(req.params.id);
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId) as any;
+    
+    if (!event) {
+      return res.status(404).json({ error: 'Event nicht gefunden' });
+    }
+
+    if (event.host_id !== req.user!.id && req.user!.role !== 'admin') {
+      return res.status(403).json({ error: 'Keine Berechtigung' });
+    }
+
+    // QR-Code URL ermitteln (gleiche Logik wie beim Erstellen)
+    let frontendUrl = process.env.FRONTEND_URL;
+    
+    if (!frontendUrl || frontendUrl === 'http://localhost:3000' || frontendUrl.includes('localhost')) {
+      const origin = req.headers.origin || req.headers.referer;
+      if (origin) {
+        try {
+          if (origin.startsWith('http://') || origin.startsWith('https://')) {
+            const url = new URL(origin);
+            frontendUrl = `${url.protocol}//${url.host}`;
+          } else {
+            const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+            frontendUrl = `${protocol}://${origin}`;
+          }
+        } catch (e) {
+          const host = req.headers.host || 'localhost:3000';
+          const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+          frontendUrl = `${protocol}://${host}`;
+        }
+      } else {
+        const host = req.headers.host || 'localhost:3000';
+        const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+        frontendUrl = `${protocol}://${host}`;
+      }
+    }
+    
+    frontendUrl = frontendUrl.replace(/\/$/, '');
+    const qrUrl = `${frontendUrl}/event/${event.event_code}`;
+    
+    // QR-Code neu generieren
+    const qrCodeDataUrl = await QRCode.toDataURL(qrUrl, {
+      width: 400,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+
+    // QR-Code speichern
+    const uploadsDir = path.join(__dirname, '../../uploads/qrcodes');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    const qrCodePath = path.join(uploadsDir, `qr-${event.event_code}.png`);
+    const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, '');
+    fs.writeFileSync(qrCodePath, base64Data, 'base64');
+
+    db.prepare('UPDATE events SET qr_code = ? WHERE id = ?').run(`/uploads/qrcodes/qr-${event.event_code}.png`, eventId);
+
+    console.log('QR-Code neu generiert für Event:', event.name);
+    console.log('  Neue URL:', qrUrl);
+
+    res.json({
+      message: 'QR-Code erfolgreich neu generiert',
+      qr_code: `/uploads/qrcodes/qr-${event.event_code}.png`,
+      qr_code_data: qrCodeDataUrl,
+      url: qrUrl
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Event aktualisieren (Gastgeber kann nur Name, Beschreibung, Rechte und Cover ändern)
 router.put('/:id', authenticateToken, (req: AuthRequest, res, next) => {
   try {
