@@ -104,6 +104,14 @@ router.get('/code/:code', (req, res, next) => {
       return res.status(404).json({ error: 'Event nicht gefunden' });
     }
 
+    // Prüfen ob Event abgelaufen ist
+    if (event.expires_at) {
+      const expiresAt = new Date(event.expires_at);
+      if (new Date() > expiresAt) {
+        return res.status(403).json({ error: 'Dieses Event ist abgelaufen' });
+      }
+    }
+
     res.json(event);
   } catch (error) {
     next(error);
