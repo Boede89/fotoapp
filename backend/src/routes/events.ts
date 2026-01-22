@@ -331,7 +331,7 @@ router.delete('/:id/uploads/:uploadId', authenticateToken, (req: AuthRequest, re
 });
 
 // Bulk-Download (ZIP aller ausgewählten Dateien)
-router.post('/:id/uploads/download', authenticateToken, async (req: AuthRequest, res, next) => {
+router.post('/:id/uploads/download', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const eventId = parseInt(req.params.id);
     const { uploadIds } = req.body;
@@ -341,7 +341,20 @@ router.post('/:id/uploads/download', authenticateToken, async (req: AuthRequest,
       return res.status(404).json({ error: 'Event nicht gefunden' });
     }
 
-    const isHostOrAdmin = req.user && (req.user.id === event.host_id || req.user.role === 'admin');
+    // Prüfen ob Benutzer authentifiziert ist (optional)
+    let isHostOrAdmin = false;
+    try {
+      const authHeader = req.headers['authorization'];
+      if (authHeader) {
+        const token = authHeader.split(' ')[1];
+        const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+        const decoded: any = jwt.verify(token, secret);
+        isHostOrAdmin = decoded && (decoded.id === event.host_id || decoded.role === 'admin');
+      }
+    } catch (error) {
+      // Nicht authentifiziert, ist OK
+    }
+
     if (!isHostOrAdmin && event.allow_download !== 1) {
       return res.status(403).json({ error: 'Keine Berechtigung zum Download' });
     }
