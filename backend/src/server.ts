@@ -27,7 +27,9 @@ const getUploadsPath = () => {
   }
   return path.join(process.cwd(), 'uploads');
 };
-app.use('/uploads', express.static(getUploadsPath()));
+const uploadsPath = getUploadsPath();
+console.log('Uploads-Verzeichnis:', uploadsPath);
+app.use('/uploads', express.static(uploadsPath));
 
 // Routes
 app.use('/api/auth', authRoutes);

@@ -31,14 +31,16 @@ if (!fs.existsSync(uploadsDirPath)) {
 }
 
 // Multer-Konfiguration
+// Temporäres Verzeichnis für Uploads (wird später verschoben)
+const tempUploadsDir = path.join(uploadsDirPath, 'temp');
+if (!fs.existsSync(tempUploadsDir)) {
+  fs.mkdirSync(tempUploadsDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-    const eventId = (req.body as any).event_id || (req.query as any).event_id;
-    const eventDir = path.join(uploadsDirPath, eventId?.toString() || 'temp');
-    if (!fs.existsSync(eventDir)) {
-      fs.mkdirSync(eventDir, { recursive: true });
-    }
-    cb(null, eventDir);
+    // Dateien werden zunächst in temp gespeichert, dann nach Event-ID verschoben
+    cb(null, tempUploadsDir);
   },
   filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -103,9 +105,21 @@ router.post('/', upload.array('files', 50), async (req: Request, res: Response, 
 
     const uploadedFiles: any[] = [];
 
+    // Event-Verzeichnis erstellen
+    const eventDir = path.join(uploadsDirPath, event.id.toString());
+    if (!fs.existsSync(eventDir)) {
+      fs.mkdirSync(eventDir, { recursive: true });
+    }
+
     // Alle Dateien verarbeiten
     for (const file of files) {
-      const filePath = file.path;
+      // Datei von temp-Verzeichnis ins Event-Verzeichnis verschieben
+      const tempFilePath = file.path;
+      const finalFilePath = path.join(eventDir, file.filename);
+      
+      // Datei verschieben
+      fs.renameSync(tempFilePath, finalFilePath);
+      
       const relativePath = `/uploads/events/${event.id}/${file.filename}`;
 
       // In Datenbank speichern
@@ -125,7 +139,7 @@ router.post('/', upload.array('files', 50), async (req: Request, res: Response, 
       // Zu Synology NAS synchronisieren (falls konfiguriert)
       if (process.env.SYNOLOGY_ENABLED === 'true') {
         try {
-          await syncToSynology(event.id, event.name, filePath, file.originalname);
+          await syncToSynology(event.id, event.name, finalFilePath, file.originalname);
         } catch (synoError) {
           console.error('Synology-Sync-Fehler:', synoError);
           // Fehler wird geloggt, aber Upload wird trotzdem als erfolgreich markiert
