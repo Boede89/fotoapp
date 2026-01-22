@@ -152,7 +152,7 @@ function HostDashboard() {
               <div key={event.id} className="event-card">
                 {event.cover_image && (
                   <img
-                    src={`http://localhost:3001${event.cover_image}`}
+                    src={event.cover_image}
                     alt={event.name}
                     className="event-cover"
                   />
