@@ -55,6 +55,10 @@ SYNOLOGY_BASE_PATH=/fotoapp
 
 3. Container starten:
 ```bash
+# Docker Compose V2 (empfohlen - modern)
+docker compose up -d
+
+# Oder falls die alte Version installiert ist:
 docker-compose up -d
 ```
 
