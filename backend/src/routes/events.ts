@@ -1,10 +1,11 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import db from '../database';
 import QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
@@ -245,9 +246,9 @@ router.delete('/:id', authenticateToken, (req: AuthRequest, res, next) => {
 });
 
 // Uploads eines Events abrufen (authentifiziert oder öffentlich)
-router.get('/:id/uploads', (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id/uploads', (req: express.Request, res: express.Response, next: express.NextFunction) => {
   try {
-    const eventId = parseInt(req.params.id);
+    const eventId = parseInt(req.params.id as string);
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId) as any;
     
     if (!event) {
@@ -257,7 +258,7 @@ router.get('/:id/uploads', (req: Request, res: Response, next: NextFunction) => 
     // Prüfen ob Benutzer authentifiziert ist (optional)
     let isHostOrAdmin = false;
     try {
-      const authHeader = req.headers['authorization'];
+      const authHeader = req.headers.authorization;
       if (authHeader) {
         const token = authHeader.split(' ')[1];
         const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -272,7 +273,17 @@ router.get('/:id/uploads', (req: Request, res: Response, next: NextFunction) => 
       SELECT * FROM uploads 
       WHERE event_id = ? 
       ORDER BY uploaded_at DESC
-    `).all(eventId);
+    `).all(eventId) as any[];
+
+    // Wenn nicht authentifiziert und keine Uploads, leeres Array zurückgeben
+    if (!isHostOrAdmin && event.allow_view !== 1) {
+      return res.json({
+        uploads: [],
+        canView: false,
+        canDownload: false,
+        isHost: false
+      });
+    }
 
     res.json({
       uploads,
