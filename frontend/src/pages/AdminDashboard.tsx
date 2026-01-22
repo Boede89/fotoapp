@@ -16,6 +16,12 @@ interface Host {
   created_at: string;
 }
 
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
 function AdminDashboard() {
   const { user, logout } = useAuth();
   const [hosts, setHosts] = useState<Host[]>([]);
