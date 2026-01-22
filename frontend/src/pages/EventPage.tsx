@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
+import { ToastContainer } from '../components/Toast';
+import { ConfirmModal } from '../components/ConfirmModal';
 import './EventPage.css';
 
 interface Event {
@@ -23,6 +25,12 @@ interface Upload {
   uploaded_at: string;
 }
 
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
 function EventPage() {
   const { code } = useParams<{ code: string }>();
   const [event, setEvent] = useState<Event | null>(null);
@@ -35,8 +43,11 @@ function EventPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const toastIdRef = useRef(0);
 
   useEffect(() => {
     loadEvent();
@@ -108,9 +119,11 @@ function EventPage() {
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
       loadUploads();
-      alert(`${selectedFiles.length} Datei(en) erfolgreich hochgeladen!`);
+      showToast(`${selectedFiles.length} Datei(en) erfolgreich hochgeladen!`, 'success');
     } catch (error: any) {
-      setError(error.response?.data?.error || 'Fehler beim Hochladen');
+      const errorMsg = error.response?.data?.error || 'Fehler beim Hochladen';
+      setError(errorMsg);
+      showToast(errorMsg, 'error');
     } finally {
       setUploading(false);
     }
@@ -124,32 +137,59 @@ function EventPage() {
     );
   }
 
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const showConfirm = (message: string, onConfirm: () => void) => {
+    setConfirmModal({ message, onConfirm });
+  };
+
   const isImage = (fileType: string) => fileType.startsWith('image/');
   const isVideo = (fileType: string) => fileType.startsWith('video/');
 
   const handleDeleteUpload = async (uploadId: number) => {
-    if (!event || !confirm('Möchten Sie dieses Bild wirklich löschen?')) return;
-    try {
-      await api.delete(`/events/${event.id}/uploads/${uploadId}`);
-      loadUploads();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Löschen');
-    }
+    if (!event) return;
+    showConfirm(
+      'Möchten Sie dieses Bild wirklich löschen?',
+      async () => {
+        try {
+          await api.delete(`/events/${event.id}/uploads/${uploadId}`);
+          loadUploads();
+          showToast('Bild erfolgreich gelöscht', 'success');
+          setConfirmModal(null);
+        } catch (error: any) {
+          showToast(error.response?.data?.error || 'Fehler beim Löschen', 'error');
+          setConfirmModal(null);
+        }
+      }
+    );
   };
 
   const handleBulkDelete = async () => {
     if (!event || selectedUploads.length === 0) return;
-    if (!confirm(`Möchten Sie ${selectedUploads.length} Bild(er) wirklich löschen?`)) return;
-    
-    try {
-      for (const uploadId of selectedUploads) {
-        await api.delete(`/events/${event.id}/uploads/${uploadId}`);
+    showConfirm(
+      `Möchten Sie ${selectedUploads.length} Bild(er) wirklich löschen?`,
+      async () => {
+        try {
+          for (const uploadId of selectedUploads) {
+            await api.delete(`/events/${event.id}/uploads/${uploadId}`);
+          }
+          setSelectedUploads([]);
+          loadUploads();
+          showToast(`${selectedUploads.length} Bild(er) erfolgreich gelöscht`, 'success');
+          setConfirmModal(null);
+        } catch (error: any) {
+          showToast(error.response?.data?.error || 'Fehler beim Löschen', 'error');
+          setConfirmModal(null);
+        }
       }
-      setSelectedUploads([]);
-      loadUploads();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Löschen');
-    }
+    );
   };
 
   const handleBulkDownload = async () => {
@@ -171,8 +211,9 @@ function EventPage() {
       });
       
       setSelectedUploads([]);
+      showToast(`${selectedUploads.length} Datei(en) werden heruntergeladen`, 'success');
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Download');
+      showToast(error.response?.data?.error || 'Fehler beim Download', 'error');
     }
   };
 
@@ -191,8 +232,9 @@ function EventPage() {
         link.click();
         document.body.removeChild(link);
       });
+      showToast(`${uploads.length} Datei(en) werden heruntergeladen`, 'success');
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Download');
+      showToast(error.response?.data?.error || 'Fehler beim Download', 'error');
     }
   };
 
@@ -397,6 +439,19 @@ function EventPage() {
           </div>
         )}
       </div>
+
+      {confirmModal && (
+        <ConfirmModal
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+          confirmText="Löschen"
+          cancelText="Abbrechen"
+          type="danger"
+        />
+      )}
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

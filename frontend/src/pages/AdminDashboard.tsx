@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { ToastContainer } from '../components/Toast';
+import { ConfirmModal } from '../components/ConfirmModal';
 import './Dashboard.css';
 
 interface Host {
@@ -42,6 +44,19 @@ function AdminDashboard() {
     }
   };
 
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const showConfirm = (message: string, onConfirm: () => void) => {
+    setConfirmModal({ message, onConfirm });
+  };
+
   const handleAddHost = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -53,22 +68,30 @@ function AdminDashboard() {
       setNewHost({ username: '', email: '', password: '', max_events: '', event_date: '', expires_in_days: 14 });
       setShowAddHost(false);
       loadHosts();
+      showToast('Gastgeber erfolgreich erstellt!', 'success');
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Erstellen des Gastgebers');
+      showToast(error.response?.data?.error || 'Fehler beim Erstellen des Gastgebers', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteHost = async (id: number) => {
-    if (!confirm('Möchten Sie diesen Gastgeber wirklich löschen? Alle zugehörigen Events und Dateien werden ebenfalls gelöscht.')) return;
-    try {
-      await api.delete(`/admin/hosts/${id}`);
-      loadHosts();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Löschen');
-      console.error('Fehler beim Löschen:', error);
-    }
+    showConfirm(
+      'Möchten Sie diesen Gastgeber wirklich löschen? Alle zugehörigen Events und Dateien werden ebenfalls gelöscht.',
+      async () => {
+        try {
+          await api.delete(`/admin/hosts/${id}`);
+          loadHosts();
+          showToast('Gastgeber erfolgreich gelöscht', 'success');
+          setConfirmModal(null);
+        } catch (error: any) {
+          showToast(error.response?.data?.error || 'Fehler beim Löschen', 'error');
+          setConfirmModal(null);
+          console.error('Fehler beim Löschen:', error);
+        }
+      }
+    );
   };
 
   const handleEditHost = async (e: React.FormEvent) => {
@@ -89,8 +112,9 @@ function AdminDashboard() {
       setEditingHost(null);
       setNewHost({ username: '', email: '', password: '', max_events: '', event_date: '', expires_in_days: 14 });
       loadHosts();
+      showToast('Gastgeber erfolgreich aktualisiert!', 'success');
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Aktualisieren');
+      showToast(error.response?.data?.error || 'Fehler beim Aktualisieren', 'error');
     } finally {
       setLoading(false);
     }
@@ -283,6 +307,19 @@ function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {confirmModal && (
+        <ConfirmModal
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+          confirmText="Löschen"
+          cancelText="Abbrechen"
+          type="danger"
+        />
+      )}
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

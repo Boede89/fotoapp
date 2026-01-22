@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import EventEditModal from './EventEditModal';
+import { ToastContainer } from '../components/Toast';
+import { ConfirmModal } from '../components/ConfirmModal';
 import './Dashboard.css';
 
 interface Event {
@@ -17,9 +19,27 @@ interface Event {
   created_at: string;
 }
 
+interface UserProfile {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  max_events: number | null;
+  event_date: string | null;
+  expires_in_days: number;
+  event_count?: number;
+}
+
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
 function HostDashboard() {
   const { user, logout } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [newEvent, setNewEvent] = useState({
@@ -30,10 +50,15 @@ function HostDashboard() {
   });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [showQRCode, setShowQRCode] = useState<Event | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const toastIdRef = useRef(0);
 
   useEffect(() => {
     loadEvents();
+    loadUserProfile();
   }, []);
 
   const loadEvents = async () => {
@@ -43,6 +68,43 @@ function HostDashboard() {
     } catch (error) {
       console.error('Fehler beim Laden der Events:', error);
     }
+  };
+
+  const loadUserProfile = async () => {
+    try {
+      const response = await api.get('/auth/me');
+      setUserProfile(response.data);
+    } catch (error) {
+      console.error('Fehler beim Laden des Profils:', error);
+    }
+  };
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const showConfirm = (message: string, onConfirm: () => void) => {
+    setConfirmModal({ message, onConfirm });
+  };
+
+  const canCreateEvent = () => {
+    if (!userProfile) return true;
+    if (userProfile.max_events === null) return true;
+    const currentCount = userProfile.event_count || 0;
+    return currentCount < userProfile.max_events;
+  };
+
+  const handleShowAddEvent = () => {
+    if (!canCreateEvent()) {
+      showToast(`Sie haben bereits die maximale Anzahl von ${userProfile?.max_events} Event(s) erreicht.`, 'error');
+      return;
+    }
+    setShowAddEvent(true);
   };
 
   const handleAddEvent = async (e: React.FormEvent) => {
@@ -69,21 +131,75 @@ function HostDashboard() {
       if (coverInputRef.current) coverInputRef.current.value = '';
       setShowAddEvent(false);
       loadEvents();
+      loadUserProfile();
+      showToast('Event erfolgreich erstellt!', 'success');
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Erstellen des Events');
+      showToast(error.response?.data?.error || 'Fehler beim Erstellen des Events', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteEvent = async (id: number) => {
-    if (!confirm('Möchten Sie dieses Event wirklich löschen? Alle zugehörigen Dateien werden ebenfalls gelöscht.')) return;
-    try {
-      await api.delete(`/events/${id}`);
-      loadEvents();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Fehler beim Löschen');
-      console.error('Fehler beim Löschen:', error);
+    showConfirm(
+      'Möchten Sie dieses Event wirklich löschen? Alle zugehörigen Dateien werden ebenfalls gelöscht.',
+      async () => {
+        try {
+          await api.delete(`/events/${id}`);
+          loadEvents();
+          loadUserProfile();
+          showToast('Event erfolgreich gelöscht', 'success');
+          setConfirmModal(null);
+        } catch (error: any) {
+          showToast(error.response?.data?.error || 'Fehler beim Löschen', 'error');
+          setConfirmModal(null);
+          console.error('Fehler beim Löschen:', error);
+        }
+      }
+    );
+  };
+
+  const handlePrintQRCode = (event: Event) => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow && event.qr_code) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>QR-Code - ${event.name}</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                margin: 0;
+                padding: 20px;
+              }
+              h1 { margin-bottom: 10px; }
+              p { color: #666; margin-bottom: 20px; }
+              img { max-width: 400px; height: auto; }
+              @media print {
+                body { margin: 0; }
+              }
+            </style>
+          </head>
+          <body>
+            <h1>${event.name}</h1>
+            <p>Scannen Sie diesen QR-Code, um zum Event zu gelangen</p>
+            <img src="${window.location.origin}${event.qr_code}" alt="QR-Code" />
+            <p style="margin-top: 20px; font-size: 12px;">Event-Code: ${event.event_code}</p>
+            <script>
+              window.onload = function() {
+                window.print();
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
     }
   };
 
@@ -105,7 +221,16 @@ function HostDashboard() {
         <div className="section">
           <div className="section-header">
             <h2>Meine Events</h2>
-            <button onClick={() => setShowAddEvent(!showAddEvent)} className="add-button">
+            {userProfile && userProfile.max_events !== null && (
+              <div className="event-limit-info">
+                {userProfile.event_count || 0} / {userProfile.max_events} Events
+              </div>
+            )}
+            <button 
+              onClick={showAddEvent ? () => setShowAddEvent(false) : handleShowAddEvent} 
+              className="add-button"
+              disabled={!canCreateEvent() && !showAddEvent}
+            >
               {showAddEvent ? 'Abbrechen' : '+ Event erstellen'}
             </button>
           </div>
@@ -188,6 +313,12 @@ function HostDashboard() {
                     >
                       Bearbeiten
                     </button>
+                    <button
+                      onClick={() => setShowQRCode(event)}
+                      className="qr-button"
+                    >
+                      QR-Code
+                    </button>
                     <a
                       href={`/event/${event.event_code}`}
                       target="_blank"
@@ -216,6 +347,57 @@ function HostDashboard() {
           onUpdate={loadEvents}
         />
       )}
+
+      {showQRCode && (
+        <div className="modal-overlay" onClick={() => setShowQRCode(null)}>
+          <div className="qr-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="qr-modal-header">
+              <h2>QR-Code: {showQRCode.name}</h2>
+              <button className="qr-modal-close" onClick={() => setShowQRCode(null)}>×</button>
+            </div>
+            <div className="qr-modal-content">
+              {showQRCode.qr_code && (
+                <img
+                  src={showQRCode.qr_code}
+                  alt="QR-Code"
+                  className="qr-code-image"
+                />
+              )}
+              <p className="qr-code-url">{getEventUrl(showQRCode.event_code)}</p>
+              <div className="qr-modal-actions">
+                <button
+                  onClick={() => handlePrintQRCode(showQRCode)}
+                  className="qr-print-button"
+                >
+                  🖨️ Drucken
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(getEventUrl(showQRCode.event_code));
+                    showToast('URL in Zwischenablage kopiert!', 'success');
+                  }}
+                  className="qr-copy-button"
+                >
+                  📋 URL kopieren
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+          confirmText="Löschen"
+          cancelText="Abbrechen"
+          type="danger"
+        />
+      )}
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

@@ -80,4 +80,24 @@ router.post('/register', async (req, res, next) => {
   }
 });
 
+// Benutzer-Profil abrufen
+router.get('/me', authenticateToken, (req: AuthRequest, res, next) => {
+  try {
+    const user = db.prepare('SELECT id, username, email, role, max_events, event_date, expires_in_days FROM users WHERE id = ?').get(req.user!.id) as any;
+    if (!user) {
+      return res.status(404).json({ error: 'Benutzer nicht gefunden' });
+    }
+    
+    // Event-Anzahl hinzufügen
+    if (user.role === 'host') {
+      const eventCount = db.prepare('SELECT COUNT(*) as count FROM events WHERE host_id = ?').get(user.id) as any;
+      user.event_count = eventCount.count;
+    }
+    
+    res.json(user);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
