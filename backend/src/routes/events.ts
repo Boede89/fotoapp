@@ -244,8 +244,8 @@ router.delete('/:id', authenticateToken, (req: AuthRequest, res, next) => {
   }
 });
 
-// Uploads eines Events abrufen
-router.get('/:id/uploads', (req, res, next) => {
+// Uploads eines Events abrufen (authentifiziert oder öffentlich)
+router.get('/:id/uploads', (req: Request, res: Response, next: NextFunction) => {
   try {
     const eventId = parseInt(req.params.id);
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId) as any;
@@ -254,13 +254,127 @@ router.get('/:id/uploads', (req, res, next) => {
       return res.status(404).json({ error: 'Event nicht gefunden' });
     }
 
+    // Prüfen ob Benutzer authentifiziert ist (optional)
+    let isHostOrAdmin = false;
+    try {
+      const authHeader = req.headers['authorization'];
+      if (authHeader) {
+        const token = authHeader.split(' ')[1];
+        const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+        const decoded: any = jwt.verify(token, secret);
+        isHostOrAdmin = decoded && (decoded.id === event.host_id || decoded.role === 'admin');
+      }
+    } catch (error) {
+      // Nicht authentifiziert, ist OK
+    }
+
     const uploads = db.prepare(`
       SELECT * FROM uploads 
       WHERE event_id = ? 
       ORDER BY uploaded_at DESC
     `).all(eventId);
 
-    res.json(uploads);
+    res.json({
+      uploads,
+      canView: isHostOrAdmin || event.allow_view === 1,
+      canDownload: isHostOrAdmin || event.allow_download === 1,
+      isHost: isHostOrAdmin
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Einzelnes Upload löschen (nur Gastgeber/Admin)
+router.delete('/:id/uploads/:uploadId', authenticateToken, (req: AuthRequest, res, next) => {
+  try {
+    const eventId = parseInt(req.params.id);
+    const uploadId = parseInt(req.params.uploadId);
+
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId) as any;
+    if (!event) {
+      return res.status(404).json({ error: 'Event nicht gefunden' });
+    }
+
+    if (event.host_id !== req.user!.id && req.user!.role !== 'admin') {
+      return res.status(403).json({ error: 'Keine Berechtigung' });
+    }
+
+    const upload = db.prepare('SELECT * FROM uploads WHERE id = ? AND event_id = ?').get(uploadId, eventId) as any;
+    if (!upload) {
+      return res.status(404).json({ error: 'Upload nicht gefunden' });
+    }
+
+    // Datei löschen
+    const fs = require('fs');
+    const path = require('path');
+    const getUploadsDir = () => {
+      if (typeof __dirname !== 'undefined') {
+        return path.join(__dirname, '../../uploads/events');
+      }
+      return path.join(process.cwd(), 'uploads/events');
+    };
+    const uploadsDir = getUploadsDir();
+    const filePath = path.join(uploadsDir, '..', upload.file_path.replace('/uploads/', ''));
+    
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // Aus Datenbank löschen
+    db.prepare('DELETE FROM uploads WHERE id = ?').run(uploadId);
+
+    res.json({ message: 'Upload erfolgreich gelöscht' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Bulk-Download (ZIP aller ausgewählten Dateien)
+router.post('/:id/uploads/download', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const eventId = parseInt(req.params.id);
+    const { uploadIds } = req.body;
+
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId) as any;
+    if (!event) {
+      return res.status(404).json({ error: 'Event nicht gefunden' });
+    }
+
+    const isHostOrAdmin = req.user && (req.user.id === event.host_id || req.user.role === 'admin');
+    if (!isHostOrAdmin && event.allow_download !== 1) {
+      return res.status(403).json({ error: 'Keine Berechtigung zum Download' });
+    }
+
+    // Wenn keine IDs angegeben, alle herunterladen
+    let uploads;
+    if (uploadIds && uploadIds.length > 0) {
+      const placeholders = uploadIds.map(() => '?').join(',');
+      uploads = db.prepare(`
+        SELECT * FROM uploads 
+        WHERE event_id = ? AND id IN (${placeholders})
+      `).all(eventId, ...uploadIds) as any[];
+    } else {
+      uploads = db.prepare(`
+        SELECT * FROM uploads 
+        WHERE event_id = ?
+      `).all(eventId) as any[];
+    }
+
+    if (uploads.length === 0) {
+      return res.status(404).json({ error: 'Keine Dateien gefunden' });
+    }
+
+    // Für jetzt: Einzelne Dateien zurückgeben (ZIP-Erstellung kann später hinzugefügt werden)
+    // Oder alle Dateien als Array zurückgeben für Frontend-Download
+    res.json({
+      files: uploads.map(u => ({
+        id: u.id,
+        filename: u.original_filename,
+        path: u.file_path,
+        size: u.file_size
+      }))
+    });
   } catch (error) {
     next(error);
   }

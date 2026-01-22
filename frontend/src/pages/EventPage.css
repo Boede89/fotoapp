@@ -168,6 +168,22 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.gallery-item.selected {
+  border: 3px solid #667eea;
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.upload-checkbox {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 20px;
+  height: 20px;
+  z-index: 10;
+  cursor: pointer;
 }
 
 .gallery-image,
@@ -194,6 +210,85 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gallery-item-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.delete-upload-button {
+  padding: 6px 12px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+}
+
+.delete-upload-button:hover {
+  background: #d32f2f;
+}
+
+.gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.gallery-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.download-selected-button,
+.download-all-button,
+.delete-selected-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.download-selected-button,
+.download-all-button {
+  background: #4caf50;
+  color: white;
+}
+
+.download-selected-button:hover,
+.download-all-button:hover {
+  background: #45a049;
+}
+
+.download-selected-button:disabled,
+.download-all-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.delete-selected-button {
+  background: #f44336;
+  color: white;
+}
+
+.delete-selected-button:hover {
+  background: #d32f2f;
+}
+
+.delete-selected-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .guest-name {

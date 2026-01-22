@@ -18,6 +18,7 @@ function AdminDashboard() {
   const { user, logout } = useAuth();
   const [hosts, setHosts] = useState<Host[]>([]);
   const [showAddHost, setShowAddHost] = useState(false);
+  const [editingHost, setEditingHost] = useState<Host | null>(null);
   const [newHost, setNewHost] = useState({
     username: '',
     email: '',
@@ -60,12 +61,38 @@ function AdminDashboard() {
   };
 
   const handleDeleteHost = async (id: number) => {
-    if (!confirm('Möchten Sie diesen Gastgeber wirklich löschen?')) return;
+    if (!confirm('Möchten Sie diesen Gastgeber wirklich löschen? Alle zugehörigen Events und Dateien werden ebenfalls gelöscht.')) return;
     try {
       await api.delete(`/admin/hosts/${id}`);
       loadHosts();
-    } catch (error) {
-      alert('Fehler beim Löschen');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Fehler beim Löschen');
+      console.error('Fehler beim Löschen:', error);
+    }
+  };
+
+  const handleEditHost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingHost) return;
+    
+    setLoading(true);
+    try {
+      const updateData: any = {};
+      if (newHost.username) updateData.username = newHost.username;
+      if (newHost.email) updateData.email = newHost.email;
+      if (newHost.password) updateData.password = newHost.password;
+      if (newHost.max_events !== '') updateData.max_events = newHost.max_events ? parseInt(newHost.max_events) : null;
+      if (newHost.event_date !== '') updateData.event_date = newHost.event_date || null;
+      if (newHost.expires_in_days) updateData.expires_in_days = parseInt(newHost.expires_in_days.toString()) || 14;
+
+      await api.put(`/admin/hosts/${editingHost.id}`, updateData);
+      setEditingHost(null);
+      setNewHost({ username: '', email: '', password: '', max_events: '', event_date: '', expires_in_days: 14 });
+      loadHosts();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Fehler beim Aktualisieren');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -145,6 +172,71 @@ function AdminDashboard() {
             </form>
           )}
 
+          {editingHost && (
+            <div className="edit-host-form">
+              <h3>Gastgeber bearbeiten: {editingHost.username}</h3>
+              <form onSubmit={handleEditHost}>
+                <input
+                  type="text"
+                  placeholder="Benutzername"
+                  value={newHost.username}
+                  onChange={(e) => setNewHost({ ...newHost, username: e.target.value })}
+                />
+                <input
+                  type="email"
+                  placeholder="E-Mail"
+                  value={newHost.email}
+                  onChange={(e) => setNewHost({ ...newHost, email: e.target.value })}
+                />
+                <input
+                  type="password"
+                  placeholder="Neues Passwort (leer lassen zum Beibehalten)"
+                  value={newHost.password}
+                  onChange={(e) => setNewHost({ ...newHost, password: e.target.value })}
+                />
+                <label>
+                  Maximale Anzahl Events (leer = unbegrenzt):
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Unbegrenzt"
+                    value={newHost.max_events}
+                    onChange={(e) => setNewHost({ ...newHost, max_events: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Event-Datum:
+                  <input
+                    type="date"
+                    value={newHost.event_date}
+                    onChange={(e) => setNewHost({ ...newHost, event_date: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Gültigkeitsdauer in Tagen:
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={newHost.expires_in_days}
+                    onChange={(e) => setNewHost({ ...newHost, expires_in_days: parseInt(e.target.value) || 14 })}
+                  />
+                </label>
+                <div className="form-actions">
+                  <button type="button" onClick={() => {
+                    setEditingHost(null);
+                    setNewHost({ username: '', email: '', password: '', max_events: '', event_date: '', expires_in_days: 14 });
+                  }}>
+                    Abbrechen
+                  </button>
+                  <button type="submit" disabled={loading}>
+                    {loading ? 'Wird gespeichert...' : 'Speichern'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
           <div className="hosts-list">
             {hosts.map((host) => (
               <div key={host.id} className="host-card">
@@ -162,12 +254,30 @@ function AdminDashboard() {
                     <span>Gültigkeitsdauer: {host.expires_in_days} Tage</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteHost(host.id)}
-                  className="delete-button"
-                >
-                  Löschen
-                </button>
+                <div className="host-actions">
+                  <button
+                    onClick={() => {
+                      setEditingHost(host);
+                      setNewHost({
+                        username: host.username,
+                        email: host.email,
+                        password: '',
+                        max_events: host.max_events?.toString() || '',
+                        event_date: host.event_date || '',
+                        expires_in_days: host.expires_in_days || 14
+                      });
+                    }}
+                    className="edit-button"
+                  >
+                    Bearbeiten
+                  </button>
+                  <button
+                    onClick={() => handleDeleteHost(host.id)}
+                    className="delete-button"
+                  >
+                    Löschen
+                  </button>
+                </div>
               </div>
             ))}
           </div>

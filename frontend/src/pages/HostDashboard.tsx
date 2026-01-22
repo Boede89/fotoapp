@@ -28,7 +28,9 @@ function HostDashboard() {
     allow_view: true,
     allow_download: false
   });
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadEvents();
@@ -47,8 +49,24 @@ function HostDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/events', newEvent);
+      const response = await api.post('/events', newEvent);
+      const eventId = response.data.id;
+
+      // Cover-Bild hochladen (falls vorhanden)
+      if (coverFile && eventId) {
+        const formData = new FormData();
+        formData.append('cover', coverFile);
+        formData.append('event_id', eventId.toString());
+        await api.post('/upload/cover', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      }
+
       setNewEvent({ name: '', description: '', allow_view: true, allow_download: false });
+      setCoverFile(null);
+      if (coverInputRef.current) coverInputRef.current.value = '';
       setShowAddEvent(false);
       loadEvents();
     } catch (error: any) {

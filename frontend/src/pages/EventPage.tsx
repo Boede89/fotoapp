@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import './EventPage.css';
 
@@ -25,8 +26,13 @@ interface Upload {
 
 function EventPage() {
   const { code } = useParams<{ code: string }>();
+  const { user } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
+  const [canView, setCanView] = useState(true);
+  const [canDownload, setCanDownload] = useState(false);
+  const [isHost, setIsHost] = useState(false);
+  const [selectedUploads, setSelectedUploads] = useState<number[]>([]);
   const [guestName, setGuestName] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -52,7 +58,10 @@ function EventPage() {
     if (!event) return;
     try {
       const response = await api.get(`/events/${event.id}/uploads`);
-      setUploads(response.data);
+      setUploads(response.data.uploads || response.data);
+      setCanView(response.data.canView !== undefined ? response.data.canView : true);
+      setCanDownload(response.data.canDownload !== undefined ? response.data.canDownload : false);
+      setIsHost(response.data.isHost || false);
     } catch (error) {
       console.error('Fehler beim Laden der Uploads:', error);
     }
@@ -119,6 +128,75 @@ function EventPage() {
 
   const isImage = (fileType: string) => fileType.startsWith('image/');
   const isVideo = (fileType: string) => fileType.startsWith('video/');
+
+  const handleDeleteUpload = async (uploadId: number) => {
+    if (!event || !confirm('Möchten Sie dieses Bild wirklich löschen?')) return;
+    try {
+      await api.delete(`/events/${event.id}/uploads/${uploadId}`);
+      loadUploads();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Fehler beim Löschen');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!event || selectedUploads.length === 0) return;
+    if (!confirm(`Möchten Sie ${selectedUploads.length} Bild(er) wirklich löschen?`)) return;
+    
+    try {
+      for (const uploadId of selectedUploads) {
+        await api.delete(`/events/${event.id}/uploads/${uploadId}`);
+      }
+      setSelectedUploads([]);
+      loadUploads();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Fehler beim Löschen');
+    }
+  };
+
+  const handleBulkDownload = async () => {
+    if (!event || selectedUploads.length === 0) return;
+    
+    try {
+      const response = await api.post(`/events/${event.id}/uploads/download`, {
+        uploadIds: selectedUploads
+      });
+      
+      // Alle ausgewählten Dateien herunterladen
+      response.data.files.forEach((file: any) => {
+        const link = document.createElement('a');
+        link.href = file.path;
+        link.download = file.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+      
+      setSelectedUploads([]);
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Fehler beim Download');
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (!event || uploads.length === 0) return;
+    
+    try {
+      const response = await api.post(`/events/${event.id}/uploads/download`, {});
+      
+      // Alle Dateien herunterladen
+      response.data.files.forEach((file: any) => {
+        const link = document.createElement('a');
+        link.href = file.path;
+        link.download = file.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Fehler beim Download');
+    }
+  };
 
   return (
     <div className="event-page">
@@ -201,15 +279,75 @@ function EventPage() {
           </div>
         </div>
 
-        {event.allow_view && (
+        {canView && (
           <div className="gallery-section">
-            <h2>Galerie ({uploads.length} {uploads.length === 1 ? 'Datei' : 'Dateien'})</h2>
+            <div className="gallery-header">
+              <h2>Galerie ({uploads.length} {uploads.length === 1 ? 'Datei' : 'Dateien'})</h2>
+              {uploads.length > 0 && (
+                <div className="gallery-actions">
+                  {isHost && (
+                    <button
+                      onClick={handleBulkDelete}
+                      disabled={selectedUploads.length === 0}
+                      className="delete-selected-button"
+                    >
+                      Ausgewählte löschen ({selectedUploads.length})
+                    </button>
+                  )}
+                  {canDownload && (
+                    <>
+                      <button
+                        onClick={handleBulkDownload}
+                        disabled={selectedUploads.length === 0}
+                        className="download-selected-button"
+                      >
+                        Ausgewählte herunterladen ({selectedUploads.length})
+                      </button>
+                      <button
+                        onClick={handleDownloadAll}
+                        className="download-all-button"
+                      >
+                        Alle herunterladen
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
             {uploads.length === 0 ? (
               <p className="no-uploads">Noch keine Dateien hochgeladen</p>
             ) : (
               <div className="gallery">
                 {uploads.map((upload) => (
-                  <div key={upload.id} className="gallery-item">
+                  <div key={upload.id} className={`gallery-item ${selectedUploads.includes(upload.id) ? 'selected' : ''}`}>
+                    {isHost && (
+                      <input
+                        type="checkbox"
+                        checked={selectedUploads.includes(upload.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedUploads([...selectedUploads, upload.id]);
+                          } else {
+                            setSelectedUploads(selectedUploads.filter(id => id !== upload.id));
+                          }
+                        }}
+                        className="upload-checkbox"
+                      />
+                    )}
+                    {canDownload && !isHost && (
+                      <input
+                        type="checkbox"
+                        checked={selectedUploads.includes(upload.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedUploads([...selectedUploads, upload.id]);
+                          } else {
+                            setSelectedUploads(selectedUploads.filter(id => id !== upload.id));
+                          }
+                        }}
+                        className="upload-checkbox"
+                      />
+                    )}
                     {isImage(upload.file_type) ? (
                       <img
                         src={upload.file_path}
@@ -234,15 +372,25 @@ function EventPage() {
                     )}
                     <div className="gallery-info">
                       <span className="guest-name">{upload.guest_name}</span>
-                      {event.allow_download && (
-                        <a
-                          href={upload.file_path}
-                          download={upload.original_filename}
-                          className="download-link"
-                        >
-                          ⬇ Herunterladen
-                        </a>
-                      )}
+                      <div className="gallery-item-actions">
+                        {canDownload && (
+                          <a
+                            href={upload.file_path}
+                            download={upload.original_filename}
+                            className="download-link"
+                          >
+                            ⬇ Herunterladen
+                          </a>
+                        )}
+                        {isHost && (
+                          <button
+                            onClick={() => handleDeleteUpload(upload.id)}
+                            className="delete-upload-button"
+                          >
+                            🗑️ Löschen
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

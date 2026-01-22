@@ -288,6 +288,61 @@
   display: block;
 }
 
+.host-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.edit-host-form {
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.edit-host-form h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.edit-host-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.form-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.form-actions button[type="button"] {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.form-actions button[type="submit"] {
+  background: #667eea;
+  color: white;
+}
+
+.file-selected {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.9em;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
