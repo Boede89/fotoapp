@@ -331,10 +331,10 @@ router.delete('/:id/uploads/:uploadId', authenticateToken, (req: AuthRequest, re
 });
 
 // Bulk-Download (ZIP aller ausgewählten Dateien)
-router.post('/:id/uploads/download', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/uploads/download', async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   try {
-    const eventId = parseInt(req.params.id);
-    const { uploadIds } = req.body;
+    const eventId = parseInt(req.params.id as string);
+    const { uploadIds } = req.body as { uploadIds?: number[] };
 
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId) as any;
     if (!event) {
@@ -344,7 +344,7 @@ router.post('/:id/uploads/download', async (req: Request, res: Response, next: N
     // Prüfen ob Benutzer authentifiziert ist (optional)
     let isHostOrAdmin = false;
     try {
-      const authHeader = req.headers['authorization'];
+      const authHeader = req.headers.authorization;
       if (authHeader) {
         const token = authHeader.split(' ')[1];
         const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -360,7 +360,7 @@ router.post('/:id/uploads/download', async (req: Request, res: Response, next: N
     }
 
     // Wenn keine IDs angegeben, alle herunterladen
-    let uploads;
+    let uploads: any[];
     if (uploadIds && uploadIds.length > 0) {
       const placeholders = uploadIds.map(() => '?').join(',');
       uploads = db.prepare(`
