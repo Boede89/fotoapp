@@ -90,6 +90,113 @@ function EventPage() {
     }
   };
 
+  const handleCameraClick = async () => {
+    // Versuche MediaDevices API zu verwenden (funktioniert nur mit HTTPS)
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' },
+          audio: false 
+        });
+        
+        // Erstelle ein Video-Element zum Anzeigen
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        video.autoplay = true;
+        video.playsInline = true;
+        
+        // Erstelle einen Container für die Kamera-Vorschau
+        const container = document.createElement('div');
+        container.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: black;
+          z-index: 10000;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        `;
+        
+        video.style.cssText = `
+          width: 100%;
+          max-width: 100%;
+          height: auto;
+          max-height: 80vh;
+        `;
+        
+        const captureButton = document.createElement('button');
+        captureButton.textContent = '📷 Foto aufnehmen';
+        captureButton.style.cssText = `
+          margin-top: 20px;
+          padding: 15px 30px;
+          font-size: 18px;
+          background: #667eea;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+        `;
+        
+        const cancelButton = document.createElement('button');
+        cancelButton.textContent = 'Abbrechen';
+        cancelButton.style.cssText = `
+          margin-top: 10px;
+          padding: 10px 20px;
+          font-size: 16px;
+          background: #666;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+        `;
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        captureButton.onclick = () => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx?.drawImage(video, 0, 0);
+          
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+              setSelectedFiles([...selectedFiles, file]);
+              stream.getTracks().forEach(track => track.stop());
+              document.body.removeChild(container);
+            }
+          }, 'image/jpeg', 0.9);
+        };
+        
+        cancelButton.onclick = () => {
+          stream.getTracks().forEach(track => track.stop());
+          document.body.removeChild(container);
+        };
+        
+        container.appendChild(video);
+        container.appendChild(captureButton);
+        container.appendChild(cancelButton);
+        document.body.appendChild(container);
+        
+      } catch (error) {
+        console.error('Kamera-Zugriff fehlgeschlagen, verwende Fallback:', error);
+        // Fallback: Öffne Datei-Input mit capture
+        if (cameraInputRef.current) {
+          cameraInputRef.current.click();
+        }
+      }
+    } else {
+      // Fallback: Öffne Datei-Input mit capture
+      if (cameraInputRef.current) {
+        cameraInputRef.current.click();
+      }
+    }
+  };
+
   const handleUpload = async () => {
     if (!guestName.trim() || selectedFiles.length === 0 || !code) {
       setError('Bitte geben Sie Ihren Namen ein und wählen Sie mindestens eine Datei aus');
