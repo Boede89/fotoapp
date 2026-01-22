@@ -162,38 +162,164 @@ function HostDashboard() {
   const handlePrintQRCode = (event: Event) => {
     const printWindow = window.open('', '_blank');
     if (printWindow && event.qr_code) {
+      const eventUrl = getEventUrl(event.event_code);
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
             <title>QR-Code - ${event.name}</title>
             <style>
+              @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
               body {
-                font-family: Arial, sans-serif;
+                font-family: 'Poppins', Arial, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
                 min-height: 100vh;
-                margin: 0;
-                padding: 20px;
+                padding: 40px 20px;
               }
-              h1 { margin-bottom: 10px; }
-              p { color: #666; margin-bottom: 20px; }
-              img { max-width: 400px; height: auto; }
+              .qr-container {
+                background: white;
+                border-radius: 24px;
+                padding: 50px 40px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                text-align: center;
+                max-width: 600px;
+                width: 100%;
+              }
+              .party-header {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 15px;
+                margin-bottom: 30px;
+              }
+              .party-icon {
+                font-size: 48px;
+                animation: bounce 2s infinite;
+              }
+              @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
+              }
+              .event-title {
+                font-size: 32px;
+                font-weight: 700;
+                color: #667eea;
+                margin-bottom: 20px;
+                line-height: 1.2;
+              }
+              .qr-description {
+                font-size: 18px;
+                color: #555;
+                margin-bottom: 30px;
+                line-height: 1.6;
+                font-weight: 400;
+              }
+              .qr-code-wrapper {
+                background: white;
+                padding: 20px;
+                border-radius: 16px;
+                display: inline-block;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                margin-bottom: 30px;
+              }
+              .qr-code-wrapper img {
+                max-width: 350px;
+                width: 100%;
+                height: auto;
+                display: block;
+              }
+              .qr-instructions {
+                background: #f8f9fa;
+                border-radius: 12px;
+                padding: 20px;
+                margin-top: 20px;
+              }
+              .qr-instructions h3 {
+                font-size: 20px;
+                color: #333;
+                margin-bottom: 12px;
+                font-weight: 600;
+              }
+              .qr-instructions ol {
+                text-align: left;
+                display: inline-block;
+                color: #666;
+                font-size: 16px;
+                line-height: 2;
+              }
+              .qr-instructions li {
+                margin-bottom: 8px;
+              }
+              .event-code {
+                margin-top: 20px;
+                padding: 12px 20px;
+                background: #667eea;
+                color: white;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+                display: inline-block;
+              }
+              .footer {
+                margin-top: 30px;
+                font-size: 12px;
+                color: #999;
+              }
               @media print {
-                body { margin: 0; }
+                body {
+                  background: white;
+                  padding: 0;
+                }
+                .qr-container {
+                  box-shadow: none;
+                  padding: 30px;
+                }
+                .party-icon {
+                  animation: none;
+                }
               }
             </style>
           </head>
           <body>
-            <h1>${event.name}</h1>
-            <p>Scannen Sie diesen QR-Code, um zum Event zu gelangen</p>
-            <img src="${window.location.origin}${event.qr_code}" alt="QR-Code" />
-            <p style="margin-top: 20px; font-size: 12px;">Event-Code: ${event.event_code}</p>
+            <div class="qr-container">
+              <div class="party-header">
+                <span class="party-icon">🎉</span>
+                <span class="party-icon">📸</span>
+                <span class="party-icon">🎊</span>
+              </div>
+              <h1 class="event-title">${event.name}</h1>
+              <p class="qr-description">
+                Scanne den QR-Code mit deinem Smartphone und teile deine schönsten Momente mit uns!
+              </p>
+              <div class="qr-code-wrapper">
+                <img src="${window.location.origin}${event.qr_code}" alt="QR-Code" />
+              </div>
+              <div class="qr-instructions">
+                <h3>So funktioniert's:</h3>
+                <ol>
+                  <li>Öffne die Kamera-App auf deinem Smartphone</li>
+                  <li>Scanne den QR-Code</li>
+                  <li>Gib deinen Namen ein</li>
+                  <li>Lade deine Fotos und Videos hoch</li>
+                </ol>
+              </div>
+              <div class="event-code">Event-Code: ${event.event_code}</div>
+              <div class="footer">Viel Spaß auf der Party! 🎈</div>
+            </div>
             <script>
               window.onload = function() {
-                window.print();
+                setTimeout(function() {
+                  window.print();
+                }, 500);
               };
             </script>
           </body>

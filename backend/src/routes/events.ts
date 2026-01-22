@@ -63,9 +63,18 @@ router.post('/', authenticateToken, async (req: AuthRequest, res, next) => {
 
     const eventId = result.lastInsertRowid;
 
-    // QR-Code generieren
-    const qrUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/event/${eventCode}`;
-    const qrCodeDataUrl = await QRCode.toDataURL(qrUrl);
+    // QR-Code generieren - URL aus Request-Header oder Environment-Variable
+    const frontendUrl = process.env.FRONTEND_URL || 
+      (req.headers.origin || req.headers.referer || 'http://localhost:3000').replace(/\/$/, '');
+    const qrUrl = `${frontendUrl}/event/${eventCode}`;
+    const qrCodeDataUrl = await QRCode.toDataURL(qrUrl, {
+      width: 400,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
 
     // QR-Code speichern
     const uploadsDir = path.join(__dirname, '../../uploads/qrcodes');
