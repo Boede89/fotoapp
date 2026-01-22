@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  fotoapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fotoapp
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - DB_PATH=/app/data/fotoapp.db
+      - SYNOLOGY_ENABLED=${SYNOLOGY_ENABLED:-false}
+      - SYNOLOGY_HOST=${SYNOLOGY_HOST:-}
+      - SYNOLOGY_USERNAME=${SYNOLOGY_USERNAME:-}
+      - SYNOLOGY_PASSWORD=${SYNOLOGY_PASSWORD:-}
+      - SYNOLOGY_SHARE=${SYNOLOGY_SHARE:-fotoapp}
+      - SYNOLOGY_BASE_PATH=${SYNOLOGY_BASE_PATH:-/fotoapp}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    networks:
+      - fotoapp-network
+
+networks:
+  fotoapp-network:
+    driver: bridge
