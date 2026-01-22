@@ -45,7 +45,7 @@ function HostDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await api.post('/events', newEvent);
+      await api.post('/events', newEvent);
       setNewEvent({ name: '', description: '', allow_view: true, allow_download: false });
       setShowAddEvent(false);
       loadEvents();
